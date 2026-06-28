@@ -105,32 +105,22 @@ Infrastructure
 
 ## 技术栈规划
 
-前端：
+当前推荐主栈：
 
-- Next.js
-- React
-- TypeScript
-- TailwindCSS
-- shadcn/ui
-- TanStack Query
+```text
+Next.js Web 前端
+  + FastAPI AI 后端
+  + PostgreSQL / pgvector
+  + Redis / Celery
+  + S3-compatible Object Storage
+  + FFmpeg
+  + ASR / LLM / Embedding Provider Adapter
+```
 
-后端：
+详细选型、备选方案和不推荐路线见：
 
-- FastAPI
-- Pydantic
-- SQLAlchemy 或 SQLModel
-- Alembic
-- PostgreSQL
-- pgvector
-- Redis Queue / RQ / Celery
-
-AI 与媒体：
-
-- FFmpeg
-- faster-whisper 或云端 speech-to-text
-- WhisperX / pyannote 作为后续发言人识别候选
-- LLM provider adapter
-- Embedding provider adapter
+- [技术栈方案书](./doc/technology-stack-plan.md)
+- [产品形态与交付路线方案书](./doc/product-delivery-roadmap.md)
 
 ---
 
@@ -176,6 +166,8 @@ AI 与媒体：
 
 - [项目总体架构方案](./meetmind-meeting-intelligence.md)
 - [分阶段开发方案](./doc/phased-development-plan.md)
+- [技术栈方案书](./doc/technology-stack-plan.md)
+- [产品形态与交付路线方案书](./doc/product-delivery-roadmap.md)
 - [开发规则](./RULE.md)
 
 ---
