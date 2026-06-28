@@ -1,0 +1,10 @@
+{
+  "name": "meetmind",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "lint": "pnpm --filter @meetmind/web lint",
+    "typecheck": "pnpm --filter @meetmind/web typecheck",
+    "test": "pnpm --filter @meetmind/web test"
+  }
+}

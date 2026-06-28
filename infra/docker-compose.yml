@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: meetmind-postgres
+    environment:
+      POSTGRES_DB: meetmind
+      POSTGRES_USER: meetmind
+      POSTGRES_PASSWORD: meetmind
+    ports:
+      - "5432:5432"
+    volumes:
+      - meetmind-postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meetmind -d meetmind"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: meetmind-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - meetmind-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: meetmind-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: meetmind
+      MINIO_ROOT_PASSWORD: meetmind-local-password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - meetmind-minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio-init:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: meetmind-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        mc alias set local http://minio:9000 meetmind meetmind-local-password
+        && mc mb --ignore-existing local/meetmind-local
+    restart: "no"
+
+volumes:
+  meetmind-postgres-data:
+  meetmind-redis-data:
+  meetmind-minio-data:

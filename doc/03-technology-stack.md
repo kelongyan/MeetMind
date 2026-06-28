@@ -500,6 +500,8 @@ Embedder
 
 推荐用于前端和未来 shared package 管理。
 
+JS 依赖管理和脚本执行统一使用 `pnpm`，禁止在项目常规流程中使用 `npm` 或 `yarn`。文档和阶段验收命令必须写成 `pnpm install`、`pnpm lint`、`pnpm typecheck`、`pnpm test` 等形式。
+
 ### 11.2 uv
 
 推荐用于 Python 依赖管理和虚拟环境管理。

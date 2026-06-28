@@ -79,7 +79,7 @@ git push origin phase-0-foundation
 
 | 阶段 | 名称 | 状态 | 核心结果 |
 | --- | --- | --- | --- |
-| Phase 0 | 工程基线 | Not Started | 项目结构、依赖管理、配置、数据库、测试框架 |
+| Phase 0 | 工程基线 | Done | 项目结构、依赖管理、配置、数据库、测试框架 |
 | Phase 1 | 后端核心领域 | Not Started | Meeting、Asset、Job、Transcript、Insight、Citation 数据模型 |
 | Phase 2 | 上传与异步任务 | Not Started | 文件上传、媒体元数据、任务队列、处理状态 |
 | Phase 3 | 语音转写链路 | Not Started | 音频标准化、ASR adapter、Transcript 入库与展示接口 |
@@ -204,8 +204,8 @@ docker compose -f infra/docker-compose.yml up -d
 cd apps/api
 python -m pytest
 cd ../web
-npm run lint
-npm run typecheck
+pnpm lint
+pnpm typecheck
 ```
 
 ### 5.7 阶段标记
@@ -501,9 +501,9 @@ git push origin phase-4-structuring-and-citations
 
 ```powershell
 cd apps/web
-npm run lint
-npm run typecheck
-npm run test
+pnpm lint
+pnpm typecheck
+pnpm test
 ```
 
 ### 10.7 阶段标记
@@ -563,7 +563,7 @@ git push origin phase-5-meeting-workbench
 cd apps/api
 python -m pytest tests/retrieval tests/qa
 cd ../web
-npm run test
+pnpm test
 ```
 
 ### 11.7 阶段标记
@@ -622,7 +622,7 @@ git push origin phase-6-single-meeting-qa
 cd apps/api
 python -m pytest tests/action_items tests/insights
 cd ../web
-npm run test
+pnpm test
 ```
 
 ### 12.7 阶段标记
@@ -683,9 +683,9 @@ docker compose -f infra/docker-compose.yml up -d
 cd apps/api
 python -m pytest
 cd ../web
-npm run lint
-npm run typecheck
-npm run test
+pnpm lint
+pnpm typecheck
+pnpm test
 ```
 
 ### 13.7 阶段标记

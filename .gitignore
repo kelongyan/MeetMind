@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Node
+node_modules/
+.next/
+tsconfig.tsbuildinfo
+out/
+dist/
+coverage/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Local data and artifacts
+uploads/
+storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

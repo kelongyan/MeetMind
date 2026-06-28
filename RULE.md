@@ -295,6 +295,17 @@ Service Layer
 
 ## 6. 前端代码规范
 
+### 6.0 JS 包管理
+
+JS 依赖管理和脚本执行统一使用 `pnpm`。
+
+规则：
+
+- 禁止使用 `npm install`、`npm run`、`yarn` 或 `npx` 作为项目常规命令。
+- 文档、脚本和阶段验收命令必须使用 `pnpm`。
+- 需要临时执行包命令时，优先使用 `pnpm exec` 或 `pnpm dlx`。
+- 前端和未来 shared package 通过 `pnpm workspace` 管理。
+
 ### 6.1 组件分层
 
 推荐分层：
