@@ -34,6 +34,7 @@ MeetMind 的核心目标是构建一个可信会议智能系统：
 - `doc/02-system-architecture.md`：系统架构、核心模块、数据模型、API、RAG 和治理要求。
 - `doc/03-technology-stack.md`：技术栈选型、推荐方案、备选方案和暂不推荐路线。
 - `doc/04-development-plan.md`：分阶段开发计划与阶段验收标准。
+- `doc/05-ui-design.md`：UI 设计规范、视觉风格、页面结构、组件状态和无障碍要求。
 
 技术栈和产品形态相关决策以对应方案书为准。除非先更新方案书并说明原因，否则不要在代码中引入与方案书冲突的框架、架构或部署路线。
 
@@ -471,6 +472,7 @@ AI 不允许：
 - 系统架构：`doc/02-system-architecture.md`
 - 技术栈方案：`doc/03-technology-stack.md`
 - 分阶段方案：`doc/04-development-plan.md`
+- UI 设计方案：`doc/05-ui-design.md`
 - 工程规则：`RULE.md`
 
 ### 9.3 文档风格
