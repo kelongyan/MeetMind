@@ -6,18 +6,7 @@ MeetMind 是一个面向会议场景的可信会议智能系统，目标是把�
 
 ---
 
-## 核心定位
-
-会议结束后，团队真正需要的不只是“看起来完整的纪要”，而是：
-
-- 能确认谁在什么时候说了什么；
-- 能知道哪些事项已经决策，哪些只是讨论；
-- 能把行动项从一句话变成可跟踪的任务对象；
-- 能快速回到原始发言，验证 AI 总结是否可靠；
-- 能围绕会议内容继续提问，并得到带引用的回答；
-- 能把单次会议沉淀为后续可搜索、可复用的知识。
-
-MeetMind 的核心目标是完成这个闭环：
+## 核心闭环
 
 ```text
 上传会议资料
@@ -31,114 +20,28 @@ MeetMind 的核心目标是完成这个闭环：
 
 ---
 
-## 核心能力
+## 当前方向
 
-### 1. 会议资料摄取
-
-支持会议音频、视频、转写文本、字幕文件等输入。系统会保存原始资产信息，创建异步处理任务，并为后续转写、结构化理解和检索做准备。
-
-### 2. 语音转写
-
-通过 ASR provider 将音频转换为带时间戳的 transcript segments。后续可以接入 `faster-whisper`、OpenAI speech-to-text、WhisperX 或其他语音识别服务。
-
-### 3. 结构化会议理解
-
-使用 LLM 将会议内容提取为结构化对象，包括：
-
-- Meeting Summary
-- Discussion Points
-- Decisions
-- Risks
-- Open Questions
-- Action Items
-
-核心结果不直接依赖 Markdown，而是通过 JSON Schema / Pydantic 校验后进入系统。
-
-### 4. 引用追溯
-
-每个关键结论都需要绑定原始 transcript segment。用户点击 action item、decision 或 Q&A 回答时，可以回到对应原始发言。
-
-### 5. 行动项生命周期
-
-Action Item 不是静态文本，而是有状态的任务对象：
-
-```text
-proposed -> confirmed -> in_progress -> done / canceled
-```
-
-AI 只负责提出候选结果，用户负责确认和修正。
-
-### 6. 单会议问答
-
-用户可以围绕当前会议提问。系统通过检索 transcript、section 和 insight，生成带引用的回答；证据不足时必须明确拒答。
+- 产品形态：先做浏览器服务，后续扩展桌面助手、本地处理和混合部署。
+- 系统架构：模块化单体 + 异步任务队列。
+- 主技术栈：Next.js + FastAPI + PostgreSQL/pgvector + Redis/Celery + S3-compatible storage。
+- AI 策略：ASR、LLM、Embedding 全部通过 provider adapter 接入。
+- 核心原则：Source First、Structured First、Evidence First、Human-in-the-loop。
 
 ---
 
-## 架构方向
+## 文档入口
 
-当前阶段采用 **模块化单体 + 异步任务队列**。
+建议按以下顺序阅读：
 
-```text
-Frontend
-  Next.js / React / TypeScript
-
-Backend API
-  FastAPI / Pydantic / SQLAlchemy
-
-Domain Services
-  Meeting / Asset / Job / Transcription / Structuring / Citation / Retrieval / QA
-
-Infrastructure
-  PostgreSQL / pgvector / Redis / Object Storage / FFmpeg / AI Providers
-```
-
-设计原则：
-
-- Source First：转写片段是事实源头。
-- Structured First：核心 AI 输出必须结构化。
-- Evidence First：关键结论必须有引用证据。
-- Human-in-the-loop：AI 结果默认是 proposed，需要用户确认。
-- Model-agnostic：ASR、LLM、Embedding 都通过 adapter 接入。
-- Privacy by Design：会议内容默认敏感，架构上保留删除、审计、模型路由和权限空间。
-
----
-
-## 技术栈规划
-
-当前推荐主栈：
-
-```text
-Next.js Web 前端
-  + FastAPI AI 后端
-  + PostgreSQL / pgvector
-  + Redis / Celery
-  + S3-compatible Object Storage
-  + FFmpeg
-  + ASR / LLM / Embedding Provider Adapter
-```
-
-详细选型、备选方案和不推荐路线见：
-
-- [技术栈方案书](./doc/technology-stack-plan.md)
-- [产品形态与交付路线方案书](./doc/product-delivery-roadmap.md)
-
----
-
-## 开发阶段
-
-项目按阶段推进，每个阶段都必须可验收、可提交、可打 tag、可推送。
-
-| 阶段 | 名称 | 当前状态 | 核心结果 |
-| --- | --- | --- | --- |
-| Phase 0 | 工程基线 | Not Started | 项目结构、依赖管理、配置、数据库、测试框架 |
-| Phase 1 | 后端核心领域 | Not Started | Meeting、Asset、Job、Transcript、Insight、Citation 数据模型 |
-| Phase 2 | 上传与异步任务 | Not Started | 文件上传、媒体元数据、任务队列、处理状态 |
-| Phase 3 | 语音转写链路 | Not Started | 音频标准化、ASR adapter、Transcript 入库与展示接口 |
-| Phase 4 | 结构化理解与引用 | Not Started | LLM JSON 输出、Action Items、Decisions、Risks、Citations |
-| Phase 5 | 会议工作台前端 | Not Started | 上传页、会议列表、会议详情、Transcript 与洞察联动 |
-| Phase 6 | 单会议 Q&A | Not Started | Embedding、检索、基于引用的回答 |
-| Phase 7 | 审阅与行动闭环 | Not Started | AI 结果编辑、确认、Action Item 状态流转 |
-| Phase 8 | 稳定性与部署准备 | Not Started | 测试样例、日志、错误恢复、Docker、本地部署说明 |
+| 顺序 | 文档 | 内容 |
+| --- | --- | --- |
+| 1 | [项目总览](./doc/00-overview.md) | 定位、趋势、核心问题、产品原则、v0.1 成功标准 |
+| 2 | [产品路线](./doc/01-product-roadmap.md) | 先浏览器服务，后续桌面/本地/混合部署 |
+| 3 | [系统架构](./doc/02-system-architecture.md) | 模块、数据流、数据模型、API、RAG、治理 |
+| 4 | [技术栈](./doc/03-technology-stack.md) | 技术选型、备选方案、暂不推荐路线 |
+| 5 | [开发计划](./doc/04-development-plan.md) | Phase 0-8、验收标准、阶段 tag |
+| 6 | [开发规则](./RULE.md) | Git、代码规范、低耦合、测试、安全、阶段交付纪律 |
 
 ---
 
@@ -148,10 +51,13 @@ Next.js Web 前端
 
 已完成：
 
-- 项目总体架构方案
-- 分阶段开发方案
-- 工程规则与协作规范
-- GitHub 仓库初始化
+- 项目总览与核心产品原则；
+- 产品形态与交付路线；
+- 系统架构方案；
+- 技术栈方案；
+- 分阶段开发计划；
+- 工程规则与协作规范；
+- GitHub 仓库初始化。
 
 下一步：
 
@@ -162,47 +68,15 @@ Next.js Web 前端
 
 ---
 
-## 文档入口
-
-- [项目总体架构方案](./meetmind-meeting-intelligence.md)
-- [分阶段开发方案](./doc/phased-development-plan.md)
-- [技术栈方案书](./doc/technology-stack-plan.md)
-- [产品形态与交付路线方案书](./doc/product-delivery-roadmap.md)
-- [开发规则](./RULE.md)
-
----
-
-## 阶段推进规则
-
-每完成一个阶段，必须：
-
-1. 更新 `doc/phased-development-plan.md` 中的阶段状态。
-2. 运行该阶段要求的验证命令。
-3. 创建清晰的 Git commit。
-4. 创建阶段 tag。
-5. 推送 `main` 分支和阶段 tag 到 GitHub。
-
-示例：
-
-```powershell
-git add <changed-files>
-git commit -m "feat: complete phase 0 foundation"
-git tag phase-0-foundation
-git push -u origin main
-git push origin phase-0-foundation
-```
-
----
-
 ## 最小成功标准
 
 v0.1 只有达到下面标准，才算真正跑通：
 
-- 上传一段真实会议音频后，系统能完成异步处理。
-- 用户能看到带时间戳的 transcript。
-- 系统能生成结构化 summary、decisions、risks、action items。
-- 每个 action item 和 decision 至少有一个 citation。
-- 点击 citation 能跳到 transcript 对应位置。
-- 用户能修改并确认 action item。
-- 用户能向当前会议提问，并得到带引用的回答。
+- 上传一段真实会议音频后，系统能完成异步处理；
+- 用户能看到带时间戳的 transcript；
+- 系统能生成结构化 summary、decisions、risks、action items；
+- 每个 action item 和 decision 至少有一个 citation；
+- 点击 citation 能跳到 transcript 对应位置；
+- 用户能修改并确认 action item；
+- 用户能向当前会议提问，并得到带引用的回答；
 - 当证据不足时，Q&A 会拒绝编造。

@@ -61,7 +61,7 @@ phase-8-hardening-and-deploy
 阶段完成提交示例：
 
 ```powershell
-git add doc/phased-development-plan.md RULE.md
+git add doc/04-development-plan.md RULE.md
 git commit -m "docs: add development phases and project rules"
 git push -u origin main
 ```
@@ -91,42 +91,23 @@ git push origin phase-0-foundation
 
 ---
 
-## 4. 技术基线
+## 4. 工程基线
 
-### 4.1 推荐技术栈
+### 4.1 技术栈来源
 
-前端：
+技术栈以 `doc/03-technology-stack.md` 为准。本文只记录开发阶段和验收标准，不重复维护完整技术选型，避免后续方案漂移。
 
-- Next.js
-- React
-- TypeScript
-- TailwindCSS
-- shadcn/ui
-- TanStack Query
+当前主栈摘要：
 
-后端：
-
-- FastAPI
-- Pydantic
-- SQLAlchemy 或 SQLModel
-- Alembic
-- PostgreSQL
-- pgvector
-- Redis Queue / RQ / Celery
-
-AI 与媒体：
-
-- FFmpeg
-- faster-whisper 或云端 speech-to-text
-- LLM provider adapter
-- Embedding provider adapter
-
-基础设施：
-
-- Docker Compose
-- PostgreSQL + pgvector
-- Redis
-- 本地文件系统或 S3 兼容对象存储
+```text
+Next.js Web 前端
+  + FastAPI AI 后端
+  + PostgreSQL / pgvector
+  + Redis / Celery
+  + S3-compatible Object Storage
+  + FFmpeg
+  + ASR / LLM / Embedding Provider Adapter
+```
 
 ### 4.2 代码组织建议
 
@@ -159,7 +140,11 @@ MeetMind/
       lib/
       tests/
   doc/
-    phased-development-plan.md
+    00-overview.md
+    01-product-roadmap.md
+    02-system-architecture.md
+    03-technology-stack.md
+    04-development-plan.md
   infra/
     docker-compose.yml
   samples/
@@ -276,7 +261,7 @@ git push origin phase-0-foundation
 ### 6.5 验收标准
 
 - migration 能从空数据库跑通。
-- 所有模型字段与主方案书一致。
+- 所有模型字段与 `doc/02-system-architecture.md` 一致。
 - 核心 API 有测试覆盖。
 - 服务层不直接依赖具体 AI provider。
 
@@ -755,7 +740,7 @@ git push origin phase-8-hardening-and-deploy
 
 ```powershell
 git init -b main
-git add meetmind-meeting-intelligence.md doc/phased-development-plan.md RULE.md
+git add README.md RULE.md doc/00-overview.md doc/01-product-roadmap.md doc/02-system-architecture.md doc/03-technology-stack.md doc/04-development-plan.md
 git commit -m "docs: establish project architecture and development rules"
 git remote add origin <github-repo-url>
 git push -u origin main
