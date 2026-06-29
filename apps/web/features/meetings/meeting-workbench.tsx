@@ -84,6 +84,8 @@ export function MeetingWorkbench() {
   const [uploadState, setUploadState] = useState<LoadState>("idle");
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [lastUploadJob, setLastUploadJob] = useState<ProcessingJob | null>(null);
+  const [jobState, setJobState] = useState<LoadState>("idle");
+  const [jobMessage, setJobMessage] = useState<string | null>(null);
   const [qaQuestion, setQaQuestion] = useState("");
   const [qaResponses, setQaResponses] = useState<QAResponse[]>([]);
   const [qaState, setQaState] = useState<LoadState>("idle");
@@ -139,6 +141,8 @@ export function MeetingWorkbench() {
     setQaResponses([]);
     setQaState("idle");
     setQaError(null);
+    setJobState("idle");
+    setJobMessage(null);
     setReviewState("idle");
     setReviewMessage(null);
     setHighlightedSegmentId(null);
@@ -228,6 +232,44 @@ export function MeetingWorkbench() {
     } catch (error) {
       setQaState("error");
       setQaError(toErrorMessage(error, "无法回答该问题，请稍后重试。"));
+    }
+  }
+
+  async function handleRunJob(job: ProcessingJob) {
+    if (!selectedMeetingId) {
+      return;
+    }
+    setJobState("loading");
+    setJobMessage(null);
+    try {
+      const result = await api.runJob(job);
+      setLastUploadJob(result.job);
+      await refreshMeetings();
+      await loadDetail(selectedMeetingId);
+      setJobState("success");
+      setJobMessage(`${job.job_type} job ${result.job.status}.`);
+    } catch (error) {
+      setJobState("error");
+      setJobMessage(toErrorMessage(error, "无法运行处理任务。"));
+    }
+  }
+
+  async function handleRetryJob(jobId: string) {
+    if (!selectedMeetingId) {
+      return;
+    }
+    setJobState("loading");
+    setJobMessage(null);
+    try {
+      const retryJob = await api.retryJob(jobId);
+      setLastUploadJob(retryJob);
+      await refreshMeetings();
+      await loadDetail(selectedMeetingId);
+      setJobState("success");
+      setJobMessage("Retry job queued.");
+    } catch (error) {
+      setJobState("error");
+      setJobMessage(toErrorMessage(error, "无法重试处理任务。"));
     }
   }
 
@@ -466,7 +508,11 @@ export function MeetingWorkbench() {
                 detailState={detailState}
                 highlightedSegmentId={highlightedSegmentId}
                 insightGroups={insightGroups}
+                jobMessage={jobMessage}
+                jobState={jobState}
                 onCitationClick={handleCitationClick}
+                onRetryJob={handleRetryJob}
+                onRunJob={handleRunJob}
                 onQaQuestionChange={setQaQuestion}
                 onSubmitQuestion={handleAskQuestion}
                 onUpdateActionItem={handleUpdateActionItem}
@@ -553,7 +599,11 @@ function MeetingDetail({
   detailState,
   highlightedSegmentId,
   insightGroups,
+  jobMessage,
+  jobState,
   onCitationClick,
+  onRetryJob,
+  onRunJob,
   onQaQuestionChange,
   onSubmitQuestion,
   onUpdateActionItem,
@@ -571,7 +621,11 @@ function MeetingDetail({
   detailState: LoadState;
   highlightedSegmentId: string | null;
   insightGroups: ReturnType<typeof buildInsightGroups>;
+  jobMessage: string | null;
+  jobState: LoadState;
   onCitationClick: (citation: Citation | { segmentId: string }) => void;
+  onRetryJob: (jobId: string) => void;
+  onRunJob: (job: ProcessingJob) => void;
   onQaQuestionChange: (question: string) => void;
   onSubmitQuestion: (event: FormEvent<HTMLFormElement>) => void;
   onUpdateActionItem: (
@@ -683,6 +737,13 @@ function MeetingDetail({
           </section>
 
           <section className="min-h-0 min-w-0">
+            <JobsPanel
+              jobMessage={jobMessage}
+              jobs={detail.jobs}
+              jobState={jobState}
+              onRetryJob={onRetryJob}
+              onRunJob={onRunJob}
+            />
             <QAPanel
               onCitationClick={onCitationClick}
               onQuestionChange={onQaQuestionChange}
@@ -703,6 +764,94 @@ function MeetingDetail({
           </section>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function JobsPanel({
+  jobMessage,
+  jobs,
+  jobState,
+  onRetryJob,
+  onRunJob,
+}: {
+  jobMessage: string | null;
+  jobs: ProcessingJob[];
+  jobState: LoadState;
+  onRetryJob: (jobId: string) => void;
+  onRunJob: (job: ProcessingJob) => void;
+}) {
+  const busy = jobState === "loading";
+
+  return (
+    <section className="border-b border-slate-200">
+      <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
+        <h3 className="text-sm font-semibold text-slate-900">Jobs</h3>
+        {busy ? (
+          <Loader2 className="h-4 w-4 animate-spin text-blue-600" aria-hidden="true" />
+        ) : (
+          <span className="text-xs text-slate-500">{jobs.length} total</span>
+        )}
+      </div>
+      <div className="space-y-3 p-3">
+        {jobMessage ? <StatusNote message={jobMessage} state={jobState} /> : null}
+        {jobs.length === 0 ? (
+          <p className="rounded-md border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-500">
+            No processing jobs yet.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {jobs.map((job) => (
+              <article
+                className="rounded-md border border-slate-200 bg-white p-3"
+                key={job.id}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-950">
+                        {job.job_type}
+                      </span>
+                      <StatusBadge
+                        label={job.status}
+                        tone={jobStatusTone(job.status)}
+                      />
+                    </div>
+                    <div className="mt-1 truncate text-xs text-slate-500">
+                      {job.provider ?? "local"} · attempt {job.attempt_number ?? 1}
+                    </div>
+                    {job.failure_message ? (
+                      <p className="mt-2 text-xs leading-5 text-red-700">
+                        {job.failure_message}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {canRunJob(job) ? (
+                      <ReviewButton
+                        disabled={busy}
+                        onClick={() => onRunJob(job)}
+                      >
+                        <Play className="h-3.5 w-3.5" aria-hidden="true" />
+                        Run
+                      </ReviewButton>
+                    ) : null}
+                    {job.status === "failed" && job.retryable !== false ? (
+                      <ReviewButton
+                        disabled={busy}
+                        onClick={() => onRetryJob(job.id)}
+                      >
+                        <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                        Retry
+                      </ReviewButton>
+                    ) : null}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -1173,6 +1322,26 @@ function toneClassName(tone: StatusTone): string {
     return "border-blue-200 bg-blue-50 text-blue-700";
   }
   return "border-slate-200 bg-slate-100 text-slate-700";
+}
+
+function canRunJob(job: ProcessingJob): boolean {
+  return (
+    job.status === "queued" &&
+    (job.job_type === "transcribe" || job.job_type === "structure")
+  );
+}
+
+function jobStatusTone(status: ProcessingJob["status"]): StatusTone {
+  if (status === "succeeded") {
+    return "success";
+  }
+  if (status === "failed") {
+    return "danger";
+  }
+  if (status === "running") {
+    return "info";
+  }
+  return "neutral";
 }
 
 function reviewButtonToneClassName(

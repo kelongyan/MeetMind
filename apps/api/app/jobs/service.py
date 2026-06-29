@@ -26,6 +26,11 @@ def create_processing_job(
     return job
 
 
+def list_processing_jobs(session: Session, meeting_id: UUID) -> list[ProcessingJob]:
+    get_meeting(session, meeting_id)
+    return repository.list_jobs(session, meeting_id)
+
+
 def get_processing_job(session: Session, job_id: UUID) -> ProcessingJob:
     job = repository.get_job(session, job_id)
     if job is None:

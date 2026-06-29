@@ -223,6 +223,84 @@ describe("MeetMind API client", () => {
     expect(insight.status).toBe("dismissed");
     expect(action.confirmed_by_user_id).toBe("local-user");
   });
+
+  it("loads and operates processing jobs", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            id: "job-1",
+            meeting_id: "meeting-1",
+            job_type: "structure",
+            status: "queued",
+            progress: 0,
+            provider: "fake-llm",
+            input_asset_id: "asset-1",
+            retry_of_job_id: null,
+            attempt_number: 1,
+            failure_code: null,
+            failure_message: null,
+            retryable: true,
+            failed_at: null,
+            started_at: null,
+            finished_at: null,
+            created_at: "2026-06-29T08:00:00Z",
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          job: { id: "job-1", job_type: "structure", status: "succeeded" },
+          insights: [],
+          action_items: [],
+          citations: [],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: "job-2",
+          meeting_id: "meeting-1",
+          job_type: "structure",
+          status: "queued",
+          progress: 0,
+          provider: "fake-llm",
+          input_asset_id: "asset-1",
+          retry_of_job_id: "job-1",
+          attempt_number: 2,
+          failure_code: null,
+          failure_message: null,
+          retryable: true,
+          failed_at: null,
+          started_at: null,
+          finished_at: null,
+          created_at: "2026-06-29T08:05:00Z",
+        }),
+      );
+    const api = createMeetMindApi("http://api.test", fetchMock);
+
+    const jobs = await api.listJobs("meeting-1");
+    const structureResult = await api.runJob(jobs[0]);
+    const retryJob = await api.retryJob("job-1");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://api.test/api/meetings/meeting-1/jobs",
+      { headers: { Accept: "application/json" } },
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://api.test/api/jobs/job-1/structure",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "http://api.test/api/jobs/job-1/retry",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(structureResult.job.status).toBe("succeeded");
+    expect(retryJob.retry_of_job_id).toBe("job-1");
+  });
 });
 
 function jsonResponse(

@@ -3,9 +3,11 @@ import type {
   AssetUploadResult,
   Citation,
   InsightItem,
+  JobRunResult,
   Meeting,
   MeetingAsset,
   MeetingDetailData,
+  ProcessingJob,
   QAResponse,
   TranscriptSegment,
 } from "./types";
@@ -58,8 +60,11 @@ export interface MeetMindApi {
   listMeetings(): Promise<Meeting[]>;
   getMeeting(meetingId: string): Promise<Meeting>;
   createMeeting(payload: CreateMeetingPayload): Promise<Meeting>;
+  listJobs(meetingId: string): Promise<ProcessingJob[]>;
   listAssets(meetingId: string): Promise<MeetingAsset[]>;
   uploadAsset(meetingId: string, file: File): Promise<AssetUploadResult>;
+  runJob(job: ProcessingJob): Promise<JobRunResult>;
+  retryJob(jobId: string): Promise<ProcessingJob>;
   listTranscript(meetingId: string): Promise<TranscriptSegment[]>;
   listInsights(meetingId: string): Promise<InsightItem[]>;
   updateInsight(
@@ -110,6 +115,8 @@ export function createMeetMindApi(
         },
         body: JSON.stringify(payload),
       }),
+    listJobs: (meetingId) =>
+      requestJson<ProcessingJob[]>(`/api/meetings/${meetingId}/jobs`),
     listAssets: (meetingId) =>
       requestJson<MeetingAsset[]>(`/api/meetings/${meetingId}/assets`),
     uploadAsset: (meetingId, file) => {
@@ -120,6 +127,23 @@ export function createMeetMindApi(
         body: formData,
       });
     },
+    runJob: (job) => {
+      if (job.job_type === "transcribe") {
+        return requestJson<JobRunResult>(`/api/jobs/${job.id}/run`, {
+          method: "POST",
+        });
+      }
+      if (job.job_type === "structure") {
+        return requestJson<JobRunResult>(`/api/jobs/${job.id}/structure`, {
+          method: "POST",
+        });
+      }
+      throw new ApiError(`${job.job_type} jobs cannot be run from the web UI`, 400);
+    },
+    retryJob: (jobId) =>
+      requestJson<ProcessingJob>(`/api/jobs/${jobId}/retry`, {
+        method: "POST",
+      }),
     listTranscript: (meetingId) =>
       requestJson<TranscriptSegment[]>(`/api/meetings/${meetingId}/transcript`),
     listInsights: (meetingId) =>
@@ -161,6 +185,7 @@ export function createMeetMindApi(
     async loadMeetingDetail(meetingId) {
       const [
         meeting,
+        jobs,
         assets,
         transcriptSegments,
         insights,
@@ -168,6 +193,7 @@ export function createMeetMindApi(
         citations,
       ] = await Promise.all([
         this.getMeeting(meetingId),
+        this.listJobs(meetingId),
         this.listAssets(meetingId),
         this.listTranscript(meetingId),
         this.listInsights(meetingId),
@@ -176,6 +202,7 @@ export function createMeetMindApi(
       ]);
       return {
         meeting,
+        jobs,
         assets,
         transcriptSegments,
         insights,

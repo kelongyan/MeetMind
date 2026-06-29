@@ -8,11 +8,20 @@ from sqlalchemy.orm import Session
 
 from app.assets import repository
 from app.config import settings
-from app.db.models import AssetType, JobStatus, JobType, MeetingAsset, ProcessingJob
+from app.db.models import (
+    AssetType,
+    JobStatus,
+    JobType,
+    MeetingAsset,
+    ProcessingJob,
+    TranscriptSegment,
+)
 from app.exceptions import InvalidFileTypeError, NotFoundError
 from app.jobs.repository import create_job
 from app.meetings.service import get_meeting
 from app.object_storage.local import LocalObjectStorage
+from app.transcription import repository as transcript_repository
+from app.transcription.importer import import_transcript_file
 
 ALLOWED_SUFFIXES: dict[str, AssetType] = {
     ".mp3": AssetType.AUDIO,
@@ -59,6 +68,24 @@ async def upload_asset(
     )
     repository.create_asset(session, asset)
     session.flush()
+    if asset_type in {AssetType.TRANSCRIPT, AssetType.SUBTITLE}:
+        imported_segments = import_transcript_file(
+            storage.path_for_uri(asset.storage_uri), asset_type
+        )
+        for imported in imported_segments:
+            transcript_repository.create_segment(
+                session,
+                TranscriptSegment(
+                    meeting_id=meeting_id,
+                    source_asset_id=asset.id,
+                    start_ms=imported.start_ms,
+                    end_ms=imported.end_ms,
+                    text=imported.text,
+                    chunk_index=imported.chunk_index,
+                ),
+            )
+        if imported_segments:
+            asset.duration_ms = max(segment.end_ms for segment in imported_segments)
 
     job = ProcessingJob(
         meeting_id=meeting_id,

@@ -54,6 +54,9 @@ export interface ProcessingJob {
   status: JobStatus;
   progress?: number;
   provider?: string | null;
+  input_asset_id?: string | null;
+  retry_of_job_id?: string | null;
+  attempt_number?: number;
   failure_code?: string | null;
   failure_message?: string | null;
   retryable?: boolean;
@@ -160,8 +163,18 @@ export interface QAResponse {
   citations: Citation[];
 }
 
+export interface JobRunResult {
+  job: ProcessingJob;
+  asset?: MeetingAsset;
+  segments?: TranscriptSegment[];
+  insights?: InsightItem[];
+  action_items?: ActionItem[];
+  citations?: Citation[];
+}
+
 export interface MeetingDetailData {
   meeting: Meeting;
+  jobs: ProcessingJob[];
   assets: MeetingAsset[];
   transcriptSegments: TranscriptSegment[];
   insights: InsightItem[];

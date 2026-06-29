@@ -25,3 +25,26 @@ def test_create_processing_job_and_read_status() -> None:
     get_response = client.get(f"/api/jobs/{job['id']}")
     assert get_response.status_code == 200
     assert get_response.json()["status"] == "queued"
+
+
+def test_list_processing_jobs_for_meeting() -> None:
+    client = TestClient(app)
+    meeting_id = client.post("/api/meetings", json={"title": "Job list"}).json()[
+        "id"
+    ]
+    first_job = client.post(
+        f"/api/meetings/{meeting_id}/process",
+        json={"job_type": "transcribe", "provider": "local-test"},
+    ).json()
+    second_job = client.post(
+        f"/api/meetings/{meeting_id}/process",
+        json={"job_type": "structure", "provider": "local-test"},
+    ).json()
+
+    response = client.get(f"/api/meetings/{meeting_id}/jobs")
+
+    assert response.status_code == 200
+    assert [job["id"] for job in response.json()] == [
+        first_job["id"],
+        second_job["id"],
+    ]

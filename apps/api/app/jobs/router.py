@@ -23,6 +23,13 @@ def create_processing_job(
     return service.create_processing_job(session, meeting_id, payload)
 
 
+@router.get("/api/meetings/{meeting_id}/jobs", response_model=list[ProcessingJobRead])
+def list_processing_jobs(
+    meeting_id: UUID, session: Session = Depends(get_db_session)
+) -> list[ProcessingJobRead]:
+    return service.list_processing_jobs(session, meeting_id)
+
+
 @router.get("/api/jobs/{job_id}", response_model=ProcessingJobRead)
 def get_processing_job(
     job_id: UUID, session: Session = Depends(get_db_session)

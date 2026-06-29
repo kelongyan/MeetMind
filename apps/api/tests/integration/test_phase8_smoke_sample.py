@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import UUID
 
 from fastapi.testclient import TestClient
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.providers.embedding.base import EmbeddingResponse
 from app.providers.embedding.dependencies import get_embedder
+from app.providers.llm.dependencies import get_llm_extractor
 from app.providers.qa.base import AnswerSynthesisResponse
 from app.providers.qa.dependencies import get_answer_synthesizer
 
@@ -28,6 +30,45 @@ class GoldenSampleEmbedder:
         return EmbeddingResponse(vectors=vectors, model_name=self.model_name)
 
 
+class GoldenSampleExtractor:
+    provider_name = "golden-sample"
+    model_name = "golden-sample-structure"
+
+    def __init__(self, sample: dict[str, object]) -> None:
+        self.sample = sample
+
+    def extract(self, request: object) -> SimpleNamespace:
+        segment = request.transcript[0]
+        action = self.sample["action_items"][0]
+        citation = self.sample["citations"][0]
+        return SimpleNamespace(
+            content=json.dumps(
+                {
+                    "meeting_brief": None,
+                    "discussion_points": [],
+                    "decisions": [],
+                    "risks": [],
+                    "open_questions": [],
+                    "action_items": [
+                        {
+                            **action,
+                            "citations": [
+                                {
+                                    **citation,
+                                    "segment_id": str(segment.segment_id),
+                                    "start_ms": segment.start_ms,
+                                    "end_ms": segment.end_ms,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ),
+            model_name=self.model_name,
+            model_version="2026-06",
+        )
+
+
 class GoldenSampleSynthesizer:
     provider_name = "golden-sample"
     model_name = "golden-sample-answer"
@@ -44,6 +85,7 @@ class GoldenSampleSynthesizer:
 def test_phase8_golden_sample_runs_from_upload_to_qa() -> None:
     sample = _load_sample()
     app.dependency_overrides[get_embedder] = lambda: GoldenSampleEmbedder()
+    app.dependency_overrides[get_llm_extractor] = lambda: GoldenSampleExtractor(sample)
     app.dependency_overrides[get_answer_synthesizer] = (
         lambda: GoldenSampleSynthesizer()
     )
@@ -67,22 +109,9 @@ def test_phase8_golden_sample_runs_from_upload_to_qa() -> None:
                 )
             },
         )
-        segment = client.post(
-            f"/api/meetings/{meeting_id}/transcript",
-            json=sample["transcript_segments"][0],
-        ).json()
-        action = client.post(
-            f"/api/meetings/{meeting_id}/action-items",
-            json=sample["action_items"][0],
-        ).json()
-        client.post(
-            f"/api/meetings/{meeting_id}/citations",
-            json={
-                **sample["citations"][0],
-                "target_id": action["id"],
-                "segment_id": segment["id"],
-            },
-        )
+        job_id = upload_response.json()["job"]["id"]
+        transcript_response = client.get(f"/api/meetings/{meeting_id}/transcript")
+        structure_response = client.post(f"/api/jobs/{job_id}/structure")
 
         qa_response = client.post(
             f"/api/meetings/{meeting_id}/qa",
@@ -93,6 +122,10 @@ def test_phase8_golden_sample_runs_from_upload_to_qa() -> None:
 
     assert upload_response.status_code == 201
     assert upload_response.json()["job"]["job_type"] == "structure"
+    assert transcript_response.status_code == 200
+    assert len(transcript_response.json()) == 1
+    assert structure_response.status_code == 200
+    assert structure_response.json()["action_items"][0]["owner_text"] == "Nina"
     assert qa_response.status_code == 200
     body = qa_response.json()
     assert sample["expected_answer_contains"] in body["answer"]["content"]
