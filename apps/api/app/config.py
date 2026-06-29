@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     s3_endpoint_url: str = "http://localhost:9000"
     s3_bucket_name: str = "meetmind-local"
+    upload_storage_dir: str = "storage/uploads"
 
     model_config = SettingsConfigDict(
         env_file=("../../.env", ".env"),

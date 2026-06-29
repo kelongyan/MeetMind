@@ -9,7 +9,14 @@ def test_core_domain_tables_have_expected_columns() -> None:
     expected_columns = {
         "meetings": {"id", "workspace_id", "title", "status", "created_at"},
         "meeting_assets": {"meeting_id", "asset_type", "storage_uri", "sha256"},
-        "processing_jobs": {"job_type", "status", "progress", "failure_code"},
+        "processing_jobs": {
+            "job_type",
+            "status",
+            "progress",
+            "failure_code",
+            "retryable",
+            "failed_at",
+        },
         "transcript_segments": {"speaker_id", "start_ms", "end_ms", "text"},
         "speakers": {"display_name", "canonical_user_id", "confidence"},
         "meeting_sections": {"title", "summary", "topic_tags"},

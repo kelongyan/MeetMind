@@ -387,6 +387,8 @@ provider
 input_asset_id
 failure_code
 failure_message
+retryable
+failed_at
 started_at
 finished_at
 created_at
@@ -538,6 +540,7 @@ DELETE /api/assets/{asset_id}
 ```text
 POST /api/meetings/{meeting_id}/process
 GET  /api/jobs/{job_id}
+PATCH /api/jobs/{job_id}
 POST /api/jobs/{job_id}/retry
 ```
 

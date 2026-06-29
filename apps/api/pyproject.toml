@@ -9,6 +9,7 @@ dependencies = [
     "pgvector>=0.4.0",
     "pydantic-settings>=2.6.0",
     "psycopg[binary]>=3.2.0",
+    "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.0",
     "uvicorn[standard]>=0.32.0",
 ]
@@ -30,6 +31,9 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [tool.ruff]
 line-length = 88
