@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.assets.repository import get_asset
 from app.db.models import JobStatus, ProcessingJob
 from app.exceptions import ConflictError, NotFoundError
 from app.jobs import repository
@@ -14,6 +15,7 @@ def create_processing_job(
     session: Session, meeting_id: UUID, payload: ProcessingJobCreate
 ) -> ProcessingJob:
     get_meeting(session, meeting_id)
+    _ensure_input_asset_belongs_to_meeting(session, meeting_id, payload)
     job = ProcessingJob(
         meeting_id=meeting_id,
         status=JobStatus.QUEUED,
@@ -80,3 +82,16 @@ def retry_processing_job(session: Session, job_id: UUID) -> ProcessingJob:
     session.commit()
     session.refresh(retry_job)
     return retry_job
+
+
+def _ensure_input_asset_belongs_to_meeting(
+    session: Session, meeting_id: UUID, payload: ProcessingJobCreate
+) -> None:
+    if payload.input_asset_id is None:
+        return
+
+    asset = get_asset(session, payload.input_asset_id)
+    if asset is None or asset.deleted_at is not None:
+        raise NotFoundError("Input asset not found")
+    if asset.meeting_id != meeting_id:
+        raise ConflictError("Input asset does not belong to this meeting")

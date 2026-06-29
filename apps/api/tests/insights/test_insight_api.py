@@ -69,3 +69,43 @@ def test_create_and_list_insights_action_items_and_citations() -> None:
     assert [item["id"] for item in actions_response.json()] == [action_id]
     assert citations_response.json()[0]["target_id"] == action_id
     assert citations_response.json()[0]["segment_id"] == segment_id
+
+
+def test_create_action_item_enforces_initial_status_rules() -> None:
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Action create rules"}
+    ).json()["id"]
+
+    missing_user_response = client.post(
+        f"/api/meetings/{meeting_id}/action-items",
+        json={
+            "description": "Prepare the rollout checklist.",
+            "status": "confirmed",
+        },
+    )
+    terminal_status_response = client.post(
+        f"/api/meetings/{meeting_id}/action-items",
+        json={
+            "description": "Prepare the rollout checklist.",
+            "status": "done",
+            "confirmed_by_user_id": "user-1",
+        },
+    )
+    confirmed_response = client.post(
+        f"/api/meetings/{meeting_id}/action-items",
+        json={
+            "description": "Prepare the rollout checklist.",
+            "status": "confirmed",
+            "confirmed_by_user_id": "user-1",
+        },
+    )
+
+    assert missing_user_response.status_code == 409
+    assert "confirmed_by_user_id" in missing_user_response.json()["detail"]
+    assert terminal_status_response.status_code == 409
+    assert "initial status" in terminal_status_response.json()["detail"].casefold()
+    assert confirmed_response.status_code == 201
+    assert confirmed_response.json()["status"] == "confirmed"
+    assert confirmed_response.json()["confirmed_by_user_id"] == "user-1"
+    assert confirmed_response.json()["confirmed_at"] is not None

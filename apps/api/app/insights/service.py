@@ -78,6 +78,7 @@ def create_action_item(
 ) -> ActionItem:
     get_meeting(session, meeting_id)
     action_item = ActionItem(meeting_id=meeting_id, **payload.model_dump())
+    _apply_action_item_initial_status(action_item, payload)
     repository.create_action_item(session, action_item)
     session.commit()
     session.refresh(action_item)
@@ -188,3 +189,21 @@ def _apply_action_item_status(
         action_item.confirmed_at = action_item.confirmed_at or datetime.now(UTC)
 
     action_item.status = next_status
+
+
+def _apply_action_item_initial_status(
+    action_item: ActionItem, payload: ActionItemCreate
+) -> None:
+    if action_item.status == ActionItemStatus.PROPOSED:
+        return
+
+    if action_item.status != ActionItemStatus.CONFIRMED:
+        raise ConflictError(
+            f"Invalid initial status for action item: {action_item.status.value}"
+        )
+
+    confirmed_by = payload.confirmed_by_user_id or action_item.confirmed_by_user_id
+    if not confirmed_by:
+        raise ConflictError("confirmed action items require confirmed_by_user_id")
+    action_item.confirmed_by_user_id = confirmed_by
+    action_item.confirmed_at = action_item.confirmed_at or datetime.now(UTC)

@@ -7,7 +7,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import settings
+from app.db.models import JobStatus, JobType, ProcessingJob
 from app.db.session import SessionLocal
+from app.exceptions import ConflictError
 from app.main import app
 from app.providers.asr.base import TranscribedSegment
 from app.providers.asr.dependencies import get_transcriber
@@ -133,6 +135,39 @@ def test_failed_transcription_preserves_existing_transcript(
     assert [item["text"] for item in transcript_response.json()] == [
         "existing transcript"
     ]
+
+
+def test_run_transcription_job_rejects_asset_from_another_meeting(
+    upload_storage_dir: Path,
+) -> None:
+    client = TestClient(app)
+    source_meeting_id = client.post(
+        "/api/meetings", json={"title": "Source audio"}
+    ).json()["id"]
+    target_meeting_id = client.post(
+        "/api/meetings", json={"title": "Target audio"}
+    ).json()["id"]
+    upload_response = client.post(
+        f"/api/meetings/{source_meeting_id}/assets",
+        files={"file": ("source.wav", _wave_bytes(duration_ms=1000), "audio/wav")},
+    )
+    asset_id = UUID(upload_response.json()["asset"]["id"])
+
+    with SessionLocal() as session:
+        job = ProcessingJob(
+            meeting_id=UUID(target_meeting_id),
+            job_type=JobType.TRANSCRIBE,
+            status=JobStatus.QUEUED,
+            input_asset_id=asset_id,
+        )
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+
+        with pytest.raises(ConflictError):
+            service.run_transcription_job(
+                session, job.id, transcriber=FakeTranscriber()
+            )
 
 
 def _wave_bytes(duration_ms: int) -> bytes:

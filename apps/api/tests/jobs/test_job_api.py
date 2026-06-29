@@ -48,3 +48,25 @@ def test_list_processing_jobs_for_meeting() -> None:
         first_job["id"],
         second_job["id"],
     ]
+
+
+def test_create_processing_job_rejects_asset_from_another_meeting() -> None:
+    client = TestClient(app)
+    source_meeting_id = client.post(
+        "/api/meetings", json={"title": "Source meeting"}
+    ).json()["id"]
+    target_meeting_id = client.post(
+        "/api/meetings", json={"title": "Target meeting"}
+    ).json()["id"]
+    asset_id = client.post(
+        f"/api/meetings/{source_meeting_id}/assets",
+        files={"file": ("notes.txt", b"Source transcript", "text/plain")},
+    ).json()["asset"]["id"]
+
+    response = client.post(
+        f"/api/meetings/{target_meeting_id}/process",
+        json={"job_type": "structure", "input_asset_id": asset_id},
+    )
+
+    assert response.status_code == 409
+    assert "asset" in response.json()["detail"].casefold()

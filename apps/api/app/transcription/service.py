@@ -37,6 +37,7 @@ def create_segment(
     session: Session, meeting_id: UUID, payload: TranscriptSegmentCreate
 ) -> TranscriptSegment:
     get_meeting(session, meeting_id)
+    _ensure_source_asset_belongs_to_meeting(session, meeting_id, payload)
     segment = TranscriptSegment(meeting_id=meeting_id, **payload.model_dump())
     repository.create_segment(session, segment)
     session.commit()
@@ -75,6 +76,8 @@ def run_transcription_job(
     asset = get_asset(session, job.input_asset_id)
     if asset is None or asset.deleted_at is not None:
         raise NotFoundError("Asset not found")
+    if asset.meeting_id != job.meeting_id:
+        raise ConflictError("Input asset does not belong to this meeting")
     if asset.asset_type not in {AssetType.AUDIO, AssetType.VIDEO}:
         raise ConflictError("Transcription requires an audio or video asset")
 
@@ -140,3 +143,16 @@ def run_transcription_job(
         meeting.status = MeetingStatus.FAILED_TRANSCRIPTION
         session.commit()
         raise
+
+
+def _ensure_source_asset_belongs_to_meeting(
+    session: Session, meeting_id: UUID, payload: TranscriptSegmentCreate
+) -> None:
+    if payload.source_asset_id is None:
+        return
+
+    asset = get_asset(session, payload.source_asset_id)
+    if asset is None or asset.deleted_at is not None:
+        raise NotFoundError("Source asset not found")
+    if asset.meeting_id != meeting_id:
+        raise ConflictError("Source asset does not belong to this meeting")
