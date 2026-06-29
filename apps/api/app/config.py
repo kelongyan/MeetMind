@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     asr_provider: str = "disabled"
     openai_api_key: str | None = None
     openai_transcription_model: str = "whisper-1"
+    llm_provider: str = "disabled"
+    openai_llm_model: str = "gpt-4.1-mini"
+    llm_prompt_version: str = "phase4-structure-v1"
 
     model_config = SettingsConfigDict(
         env_file=("../../.env", ".env"),

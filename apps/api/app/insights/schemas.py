@@ -50,6 +50,9 @@ class ActionItemCreate(BaseModel):
     due_date: date | None = None
     status: ActionItemStatus = ActionItemStatus.PROPOSED
     confidence: float | None = Field(default=None, ge=0, le=1)
+    model_name: str | None = None
+    model_version: str | None = None
+    prompt_version: str | None = None
     created_by_ai: bool = True
     confirmed_by_user_id: str | None = None
     confirmed_at: datetime | None = None
@@ -66,6 +69,9 @@ class ActionItemRead(BaseModel):
     due_date: date | None
     status: ActionItemStatus
     confidence: float | None
+    model_name: str | None
+    model_version: str | None
+    prompt_version: str | None
     created_by_ai: bool
     confirmed_by_user_id: str | None
     confirmed_at: datetime | None

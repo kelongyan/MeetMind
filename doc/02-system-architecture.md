@@ -465,6 +465,9 @@ due_text
 due_date
 status               # proposed / confirmed / in_progress / done / canceled
 confidence
+model_name
+model_version
+prompt_version
 created_by_ai
 confirmed_by_user_id
 confirmed_at
@@ -543,6 +546,7 @@ GET  /api/jobs/{job_id}
 PATCH /api/jobs/{job_id}
 POST /api/jobs/{job_id}/retry
 POST /api/jobs/{job_id}/run
+POST /api/jobs/{job_id}/structure
 ```
 
 ### 7.4 Transcript API

@@ -351,6 +351,9 @@ class ActionItem(Base):
         enum_type(ActionItemStatus), default=ActionItemStatus.PROPOSED
     )
     confidence: Mapped[float | None] = mapped_column(Float)
+    model_name: Mapped[str | None] = mapped_column(String(128))
+    model_version: Mapped[str | None] = mapped_column(String(128))
+    prompt_version: Mapped[str | None] = mapped_column(String(128))
     created_by_ai: Mapped[bool] = mapped_column(Boolean, default=True)
     confirmed_by_user_id: Mapped[str | None] = mapped_column(String(128))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

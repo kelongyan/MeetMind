@@ -83,7 +83,7 @@ git push origin phase-0-foundation
 | Phase 1 | 后端核心领域 | Done | Meeting、Asset、Job、Transcript、Insight、Citation 数据模型 |
 | Phase 2 | 上传与异步任务 | Done | 文件上传、媒体元数据、任务队列、处理状态 |
 | Phase 3 | 语音转写链路 | Done | 音频标准化、ASR adapter、Transcript 入库与展示接口 |
-| Phase 4 | 结构化理解与引用 | Not Started | LLM JSON 输出、Action Items、Decisions、Risks、Citations |
+| Phase 4 | 结构化理解与引用 | Done | LLM JSON 输出、Action Items、Decisions、Risks、Citations |
 | Phase 5 | 会议工作台前端 | Not Started | 上传页、会议列表、会议详情、Transcript 与洞察联动 |
 | Phase 6 | 单会议 Q&A | Not Started | Embedding、检索、基于引用的回答 |
 | Phase 7 | 审阅与行动闭环 | Not Started | AI 结果编辑、确认、Action Item 状态流转 |
@@ -428,6 +428,7 @@ git push origin phase-3-transcription
 ### 9.4 交付物
 
 - 对已有 transcript 可触发结构化理解。
+- 可通过 `POST /api/jobs/{job_id}/structure` 运行 `structure` job。
 - insight_items、action_items、citations 正常入库。
 - 每个 action item 和 decision 至少绑定一个 citation。
 - 结构化结果状态默认为 proposed。

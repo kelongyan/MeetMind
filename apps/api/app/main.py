@@ -7,6 +7,7 @@ from app.exceptions import ConflictError, InvalidFileTypeError, NotFoundError
 from app.insights.router import router as insights_router
 from app.jobs.router import router as jobs_router
 from app.meetings.router import router as meetings_router
+from app.structuring.router import router as structuring_router
 from app.transcription.router import router as transcription_router
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
@@ -14,6 +15,7 @@ app.include_router(meetings_router)
 app.include_router(assets_router)
 app.include_router(jobs_router)
 app.include_router(transcription_router)
+app.include_router(structuring_router)
 app.include_router(insights_router)
 
 
