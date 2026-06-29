@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     llm_provider: str = "disabled"
     openai_llm_model: str = "gpt-4.1-mini"
     llm_prompt_version: str = "phase4-structure-v1"
+    cors_allowed_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 
     model_config = SettingsConfigDict(
         env_file=("../../.env", ".env"),

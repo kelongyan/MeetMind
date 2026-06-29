@@ -18,6 +18,17 @@ body {
     sans-serif;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 * {
   box-sizing: border-box;
 }

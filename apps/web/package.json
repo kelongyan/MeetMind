@@ -6,11 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "test": "tsc --noEmit",
+    "test": "vitest run && tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
+    "lucide-react": "^1.21.0",
     "next": "^16.0.10",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.50.0"
+    "typescript-eslint": "^8.50.0",
+    "vitest": "^4.1.9"
   }
 }
