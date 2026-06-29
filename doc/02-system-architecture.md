@@ -544,6 +544,7 @@ POST /api/jobs/{job_id}/retry
 ### 7.4 Transcript API
 
 ```text
+POST /api/meetings/{meeting_id}/transcript
 GET /api/meetings/{meeting_id}/transcript
 GET /api/meetings/{meeting_id}/sections
 ```
@@ -551,7 +552,12 @@ GET /api/meetings/{meeting_id}/sections
 ### 7.5 Insight API
 
 ```text
+POST  /api/meetings/{meeting_id}/insights
 GET   /api/meetings/{meeting_id}/insights
+POST  /api/meetings/{meeting_id}/action-items
+GET   /api/meetings/{meeting_id}/action-items
+POST  /api/meetings/{meeting_id}/citations
+GET   /api/meetings/{meeting_id}/citations
 PATCH /api/insights/{insight_id}
 PATCH /api/action-items/{action_item_id}
 POST  /api/action-items/{action_item_id}/confirm

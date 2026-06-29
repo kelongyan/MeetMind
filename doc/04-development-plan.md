@@ -80,7 +80,7 @@ git push origin phase-0-foundation
 | 阶段 | 名称 | 状态 | 核心结果 |
 | --- | --- | --- | --- |
 | Phase 0 | 工程基线 | Done | 项目结构、依赖管理、配置、数据库、测试框架 |
-| Phase 1 | 后端核心领域 | Not Started | Meeting、Asset、Job、Transcript、Insight、Citation 数据模型 |
+| Phase 1 | 后端核心领域 | Done | Meeting、Asset、Job、Transcript、Insight、Citation 数据模型 |
 | Phase 2 | 上传与异步任务 | Not Started | 文件上传、媒体元数据、任务队列、处理状态 |
 | Phase 3 | 语音转写链路 | Not Started | 音频标准化、ASR adapter、Transcript 入库与展示接口 |
 | Phase 4 | 结构化理解与引用 | Not Started | LLM JSON 输出、Action Items、Decisions、Risks、Citations |
