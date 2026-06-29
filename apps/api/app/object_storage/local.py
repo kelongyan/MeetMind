@@ -54,10 +54,16 @@ class LocalObjectStorage:
         if not storage_uri.startswith("local://"):
             return
 
+        target = self.path_for_uri(storage_uri)
+        target.unlink(missing_ok=True)
+
+    def path_for_uri(self, storage_uri: str) -> Path:
+        if not storage_uri.startswith("local://"):
+            raise ValueError("Only local:// storage URIs are supported")
+
         relative_path = storage_uri.removeprefix("local://")
         target = (self.root / relative_path).resolve()
         root = self.root.resolve()
         if root not in target.parents:
-            return
-
-        target.unlink(missing_ok=True)
+            raise ValueError("Storage URI escapes the configured root")
+        return target

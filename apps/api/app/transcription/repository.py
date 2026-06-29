@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db.models import TranscriptSegment
@@ -23,3 +23,11 @@ def list_segments(session: Session, meeting_id: UUID) -> list[TranscriptSegment]
 
 def get_segment(session: Session, segment_id: UUID) -> TranscriptSegment | None:
     return session.get(TranscriptSegment, segment_id)
+
+
+def delete_segments_for_asset(session: Session, source_asset_id: UUID) -> None:
+    session.execute(
+        delete(TranscriptSegment).where(
+            TranscriptSegment.source_asset_id == source_asset_id
+        )
+    )

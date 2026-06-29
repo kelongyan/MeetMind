@@ -542,6 +542,7 @@ POST /api/meetings/{meeting_id}/process
 GET  /api/jobs/{job_id}
 PATCH /api/jobs/{job_id}
 POST /api/jobs/{job_id}/retry
+POST /api/jobs/{job_id}/run
 ```
 
 ### 7.4 Transcript API

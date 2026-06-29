@@ -3,6 +3,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.assets.schemas import MeetingAssetRead
+from app.jobs.schemas import ProcessingJobRead
+
 
 class TranscriptSegmentCreate(BaseModel):
     speaker_id: UUID | None = None
@@ -31,5 +34,13 @@ class TranscriptSegmentRead(BaseModel):
     source_asset_id: UUID | None
     chunk_index: int | None
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TranscriptionRunRead(BaseModel):
+    job: ProcessingJobRead
+    asset: MeetingAssetRead
+    segments: list[TranscriptSegmentRead]
 
     model_config = ConfigDict(from_attributes=True)
