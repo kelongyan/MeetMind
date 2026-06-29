@@ -2,12 +2,15 @@
 
 import {
   AlertCircle,
+  Bot,
   FileAudio,
   Link2,
   Loader2,
+  MessageSquareText,
   Plus,
   RefreshCcw,
   Search,
+  Send,
   UploadCloud,
 } from "lucide-react";
 import {
@@ -24,6 +27,7 @@ import type {
   Meeting,
   MeetingDetailData,
   ProcessingJob,
+  QAResponse,
 } from "./types";
 import {
   buildInsightGroups,
@@ -67,6 +71,10 @@ export function MeetingWorkbench() {
   const [uploadState, setUploadState] = useState<LoadState>("idle");
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [lastUploadJob, setLastUploadJob] = useState<ProcessingJob | null>(null);
+  const [qaQuestion, setQaQuestion] = useState("");
+  const [qaResponses, setQaResponses] = useState<QAResponse[]>([]);
+  const [qaState, setQaState] = useState<LoadState>("idle");
+  const [qaError, setQaError] = useState<string | null>(null);
   const [highlightedSegmentId, setHighlightedSegmentId] = useState<string | null>(
     null,
   );
@@ -112,6 +120,11 @@ export function MeetingWorkbench() {
       setDetail(null);
       setDetailState("idle");
     }
+    setQaQuestion("");
+    setQaResponses([]);
+    setQaState("idle");
+    setQaError(null);
+    setHighlightedSegmentId(null);
   }, [loadDetail, selectedMeetingId]);
 
   const visibleMeetings = useMemo(
@@ -175,6 +188,29 @@ export function MeetingWorkbench() {
     } catch (error) {
       setUploadState("error");
       setUploadMessage(toErrorMessage(error, "上传失败，请检查文件后重试。"));
+    }
+  }
+
+  async function handleAskQuestion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedQuestion = qaQuestion.trim();
+    if (!selectedMeetingId || !trimmedQuestion) {
+      return;
+    }
+
+    setQaState("loading");
+    setQaError(null);
+    try {
+      const response = await api.askQuestion(selectedMeetingId, {
+        question: trimmedQuestion,
+        conversation_id: qaResponses[0]?.conversation_id ?? null,
+      });
+      setQaResponses((current) => [...current, response]);
+      setQaQuestion("");
+      setQaState("success");
+    } catch (error) {
+      setQaState("error");
+      setQaError(toErrorMessage(error, "无法回答该问题，请稍后重试。"));
     }
   }
 
@@ -374,6 +410,12 @@ export function MeetingWorkbench() {
                 highlightedSegmentId={highlightedSegmentId}
                 insightGroups={insightGroups}
                 onCitationClick={handleCitationClick}
+                onQaQuestionChange={setQaQuestion}
+                onSubmitQuestion={handleAskQuestion}
+                qaError={qaError}
+                qaQuestion={qaQuestion}
+                qaResponses={qaResponses}
+                qaState={qaState}
                 selectedMeeting={selectedMeeting}
               />
             </div>
@@ -451,6 +493,12 @@ function MeetingDetail({
   highlightedSegmentId,
   insightGroups,
   onCitationClick,
+  onQaQuestionChange,
+  onSubmitQuestion,
+  qaError,
+  qaQuestion,
+  qaResponses,
+  qaState,
   selectedMeeting,
 }: {
   detail: MeetingDetailData | null;
@@ -458,7 +506,13 @@ function MeetingDetail({
   detailState: LoadState;
   highlightedSegmentId: string | null;
   insightGroups: ReturnType<typeof buildInsightGroups>;
-  onCitationClick: (citation: { segmentId: string }) => void;
+  onCitationClick: (citation: Citation | { segmentId: string }) => void;
+  onQaQuestionChange: (question: string) => void;
+  onSubmitQuestion: (event: FormEvent<HTMLFormElement>) => void;
+  qaError: string | null;
+  qaQuestion: string;
+  qaResponses: QAResponse[];
+  qaState: LoadState;
   selectedMeeting: Meeting | null;
 }) {
   if (!selectedMeeting) {
@@ -557,94 +611,217 @@ function MeetingDetail({
           </section>
 
           <section className="min-h-0 min-w-0">
-            <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
-              <h3 className="text-sm font-semibold text-slate-900">Insights</h3>
-              <span className="text-xs text-slate-500">AI proposed</span>
-            </div>
-            <div className="max-h-[640px] overflow-y-auto p-3">
-              <div className="space-y-4">
-                {insightGroups.map((group) => (
-                  <section key={group.id}>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-slate-900">
-                        {group.title}
-                      </h4>
-                      <span className="text-xs text-slate-500">
-                        {group.items.length}
-                      </span>
-                    </div>
-                    {group.items.length === 0 ? (
-                      <p className="rounded-md border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-500">
-                        {group.emptyLabel}
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {group.items.map((item) => (
-                          <article
-                            className="rounded-md border border-slate-200 bg-white p-3"
-                            key={item.id}
-                          >
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                              <StatusBadge
-                                label={item.status}
-                                tone={
-                                  item.status === "confirmed"
-                                    ? "success"
-                                    : "info"
-                                }
-                              />
-                              <span className="text-xs text-slate-500">
-                                {confidenceLabel(item.confidence)}
-                              </span>
-                            </div>
-                            <h5 className="text-sm font-semibold leading-5 text-slate-950">
-                              {item.title}
-                            </h5>
-                            {item.ownerText || item.dueText ? (
-                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
-                                {item.ownerText ? <span>{item.ownerText}</span> : null}
-                                {item.dueText ? <span>{item.dueText}</span> : null}
-                              </div>
-                            ) : null}
-                            {item.body !== item.title ? (
-                              <p className="mt-2 text-sm leading-6 text-slate-700">
-                                {item.body}
-                              </p>
-                            ) : null}
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {item.citations.length === 0 ? (
-                                <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
-                                  Needs source
-                                </span>
-                              ) : (
-                                item.citations.map((citation) => (
-                                  <button
-                                    className="inline-flex h-8 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                    key={citation.id}
-                                    onClick={() => onCitationClick(citation)}
-                                    title={citation.quote}
-                                    type="button"
-                                  >
-                                    <Link2
-                                      className="h-3.5 w-3.5"
-                                      aria-hidden="true"
-                                    />
-                                    {citation.label}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                ))}
-              </div>
-            </div>
+            <QAPanel
+              onCitationClick={onCitationClick}
+              onQuestionChange={onQaQuestionChange}
+              onSubmitQuestion={onSubmitQuestion}
+              qaError={qaError}
+              qaQuestion={qaQuestion}
+              qaResponses={qaResponses}
+              qaState={qaState}
+            />
+            <InsightsPanel
+              insightGroups={insightGroups}
+              onCitationClick={onCitationClick}
+            />
           </section>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function QAPanel({
+  onCitationClick,
+  onQuestionChange,
+  onSubmitQuestion,
+  qaError,
+  qaQuestion,
+  qaResponses,
+  qaState,
+}: {
+  onCitationClick: (citation: Citation) => void;
+  onQuestionChange: (question: string) => void;
+  onSubmitQuestion: (event: FormEvent<HTMLFormElement>) => void;
+  qaError: string | null;
+  qaQuestion: string;
+  qaResponses: QAResponse[];
+  qaState: LoadState;
+}) {
+  return (
+    <section className="border-b border-slate-200">
+      <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
+        <div className="flex items-center gap-2">
+          <MessageSquareText className="h-4 w-4 text-blue-700" aria-hidden="true" />
+          <h3 className="text-sm font-semibold text-slate-900">Ask</h3>
+        </div>
+        <span className="text-xs text-slate-500">Current meeting</span>
+      </div>
+      <div className="space-y-3 p-3">
+        <form className="space-y-2" onSubmit={onSubmitQuestion}>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Question
+            <textarea
+              className="min-h-20 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm leading-6 text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              onChange={(event) => onQuestionChange(event.target.value)}
+              placeholder="Who owns the rollout checklist?"
+              value={qaQuestion}
+            />
+          </label>
+          <button
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-blue-600 px-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={qaState === "loading" || qaQuestion.trim().length === 0}
+            type="submit"
+          >
+            {qaState === "loading" ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="h-4 w-4" aria-hidden="true" />
+            )}
+            Ask
+          </button>
+        </form>
+
+        {qaError ? <StatusNote message={qaError} state="error" /> : null}
+
+        <div className="max-h-72 space-y-3 overflow-y-auto">
+          {qaResponses.length === 0 ? (
+            <p className="rounded-md border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-500">
+              Ask a question to get an answer backed by transcript citations.
+            </p>
+          ) : (
+            qaResponses.map((response) => (
+              <article
+                className="rounded-md border border-slate-200 bg-white p-3"
+                key={response.answer.id}
+              >
+                <div className="mb-3 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {response.question.content}
+                </div>
+                <div className="flex gap-2">
+                  <Bot className="mt-1 h-4 w-4 shrink-0 text-blue-700" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm leading-6 text-slate-800">
+                      {response.answer.content}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {response.citations.length === 0 ? (
+                        <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+                          No cited evidence
+                        </span>
+                      ) : (
+                        response.citations.map((citation) => (
+                          <button
+                            className="inline-flex h-8 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            key={citation.id}
+                            onClick={() => onCitationClick(citation)}
+                            title={citation.quote}
+                            type="button"
+                          >
+                            <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            {formatTimestamp(citation.start_ms)}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function InsightsPanel({
+  insightGroups,
+  onCitationClick,
+}: {
+  insightGroups: ReturnType<typeof buildInsightGroups>;
+  onCitationClick: (citation: { segmentId: string }) => void;
+}) {
+  return (
+    <section>
+      <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
+        <h3 className="text-sm font-semibold text-slate-900">Insights</h3>
+        <span className="text-xs text-slate-500">AI proposed</span>
+      </div>
+      <div className="max-h-[360px] overflow-y-auto p-3">
+        <div className="space-y-4">
+          {insightGroups.map((group) => (
+            <section key={group.id}>
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-900">
+                  {group.title}
+                </h4>
+                <span className="text-xs text-slate-500">
+                  {group.items.length}
+                </span>
+              </div>
+              {group.items.length === 0 ? (
+                <p className="rounded-md border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-500">
+                  {group.emptyLabel}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {group.items.map((item) => (
+                    <article
+                      className="rounded-md border border-slate-200 bg-white p-3"
+                      key={item.id}
+                    >
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <StatusBadge
+                          label={item.status}
+                          tone={item.status === "confirmed" ? "success" : "info"}
+                        />
+                        <span className="text-xs text-slate-500">
+                          {confidenceLabel(item.confidence)}
+                        </span>
+                      </div>
+                      <h5 className="text-sm font-semibold leading-5 text-slate-950">
+                        {item.title}
+                      </h5>
+                      {item.ownerText || item.dueText ? (
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                          {item.ownerText ? <span>{item.ownerText}</span> : null}
+                          {item.dueText ? <span>{item.dueText}</span> : null}
+                        </div>
+                      ) : null}
+                      {item.body !== item.title ? (
+                        <p className="mt-2 text-sm leading-6 text-slate-700">
+                          {item.body}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.citations.length === 0 ? (
+                          <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+                            Needs source
+                          </span>
+                        ) : (
+                          item.citations.map((citation) => (
+                            <button
+                              className="inline-flex h-8 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-medium text-blue-700 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                              key={citation.id}
+                              onClick={() => onCitationClick(citation)}
+                              title={citation.quote}
+                              type="button"
+                            >
+                              <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              {citation.label}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

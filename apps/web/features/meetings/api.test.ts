@@ -83,6 +83,67 @@ describe("MeetMind API client", () => {
       message: "Unsupported file type",
     });
   });
+
+  it("asks a meeting question through the Q&A endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        conversation_id: "conversation-1",
+        question: {
+          id: "question-1",
+          meeting_id: "meeting-1",
+          conversation_id: "conversation-1",
+          role: "user",
+          content: "Who owns rollout?",
+          citation_ids: [],
+          model_name: null,
+          created_at: "2026-06-29T08:00:00Z",
+        },
+        answer: {
+          id: "answer-1",
+          meeting_id: "meeting-1",
+          conversation_id: "conversation-1",
+          role: "assistant",
+          content: "Nina owns rollout.",
+          citation_ids: ["citation-1"],
+          model_name: "fake-answer-model",
+          created_at: "2026-06-29T08:00:01Z",
+        },
+        citations: [
+          {
+            id: "citation-1",
+            meeting_id: "meeting-1",
+            target_type: "answer",
+            target_id: "answer-1",
+            segment_id: "segment-1",
+            start_ms: 1000,
+            end_ms: 4000,
+            quote: "Nina owns rollout.",
+            confidence: 0.9,
+            created_at: "2026-06-29T08:00:01Z",
+          },
+        ],
+      }),
+    );
+    const api = createMeetMindApi("http://api.test", fetchMock);
+
+    const response = await api.askQuestion("meeting-1", {
+      question: "Who owns rollout?",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://api.test/api/meetings/meeting-1/qa",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question: "Who owns rollout?" }),
+      }),
+    );
+    expect(response.answer.content).toBe("Nina owns rollout.");
+    expect(response.citations[0].segment_id).toBe("segment-1");
+  });
 });
 
 function jsonResponse(

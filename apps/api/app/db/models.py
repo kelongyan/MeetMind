@@ -106,6 +106,7 @@ class EmbeddingSourceType(StrEnum):
     TRANSCRIPT_SEGMENT = "transcript_segment"
     MEETING_SECTION = "meeting_section"
     INSIGHT_ITEM = "insight_item"
+    ACTION_ITEM = "action_item"
 
 
 class QAMessageRole(StrEnum):

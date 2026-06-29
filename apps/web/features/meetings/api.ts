@@ -6,6 +6,7 @@ import type {
   Meeting,
   MeetingAsset,
   MeetingDetailData,
+  QAResponse,
   TranscriptSegment,
 } from "./types";
 
@@ -30,6 +31,11 @@ export interface CreateMeetingPayload {
   language?: string | null;
 }
 
+export interface AskQuestionPayload {
+  question: string;
+  conversation_id?: string | null;
+}
+
 export interface MeetMindApi {
   listMeetings(): Promise<Meeting[]>;
   getMeeting(meetingId: string): Promise<Meeting>;
@@ -40,6 +46,10 @@ export interface MeetMindApi {
   listInsights(meetingId: string): Promise<InsightItem[]>;
   listActionItems(meetingId: string): Promise<ActionItem[]>;
   listCitations(meetingId: string): Promise<Citation[]>;
+  askQuestion(
+    meetingId: string,
+    payload: AskQuestionPayload,
+  ): Promise<QAResponse>;
   loadMeetingDetail(meetingId: string): Promise<MeetingDetailData>;
 }
 
@@ -90,6 +100,14 @@ export function createMeetMindApi(
       requestJson<ActionItem[]>(`/api/meetings/${meetingId}/action-items`),
     listCitations: (meetingId) =>
       requestJson<Citation[]>(`/api/meetings/${meetingId}/citations`),
+    askQuestion: (meetingId, payload) =>
+      requestJson<QAResponse>(`/api/meetings/${meetingId}/qa`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }),
     async loadMeetingDetail(meetingId) {
       const [
         meeting,

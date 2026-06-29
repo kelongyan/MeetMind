@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     llm_provider: str = "disabled"
     openai_llm_model: str = "gpt-4.1-mini"
     llm_prompt_version: str = "phase4-structure-v1"
+    embedding_provider: str = "local"
+    local_embedding_model: str = "local-hash-1536"
+    openai_embedding_model: str = "text-embedding-3-small"
+    embedding_dimensions: int = 1536
+    qa_answer_provider: str = "extractive"
+    qa_min_retrieval_score: float = 0.1
     cors_allowed_origins: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",

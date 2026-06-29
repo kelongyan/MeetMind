@@ -142,6 +142,24 @@ export interface Citation {
   created_at?: string;
 }
 
+export interface QAMessage {
+  id: string;
+  meeting_id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string;
+  citation_ids: string[];
+  model_name?: string | null;
+  created_at: string;
+}
+
+export interface QAResponse {
+  conversation_id: string;
+  question: QAMessage;
+  answer: QAMessage;
+  citations: Citation[];
+}
+
 export interface MeetingDetailData {
   meeting: Meeting;
   assets: MeetingAsset[];
