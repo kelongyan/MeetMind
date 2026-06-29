@@ -9,6 +9,7 @@ from app.db.models import (
     Citation,
     CitationTargetType,
     InsightItem,
+    QAMessageRole,
 )
 from app.exceptions import ConflictError, NotFoundError
 from app.insights import repository
@@ -46,8 +47,10 @@ def create_insight(
     session: Session, meeting_id: UUID, payload: InsightItemCreate
 ) -> InsightItem:
     get_meeting(session, meeting_id)
+    _ensure_section_belongs_to_meeting(session, meeting_id, payload.section_id)
     insight = InsightItem(meeting_id=meeting_id, **payload.model_dump())
     repository.create_insight(session, insight)
+    delete_embeddings_for_meeting(session, meeting_id)
     session.commit()
     session.refresh(insight)
     return insight
@@ -65,6 +68,7 @@ def update_insight(
     payload: InsightItemUpdate,
 ) -> InsightItem:
     insight = _get_insight_for_meeting(session, meeting_id, insight_id)
+    _ensure_section_belongs_to_meeting(session, meeting_id, payload.section_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(insight, field, value)
     delete_embeddings_for_meeting(session, meeting_id)
@@ -77,9 +81,11 @@ def create_action_item(
     session: Session, meeting_id: UUID, payload: ActionItemCreate
 ) -> ActionItem:
     get_meeting(session, meeting_id)
+    _ensure_section_belongs_to_meeting(session, meeting_id, payload.section_id)
     action_item = ActionItem(meeting_id=meeting_id, **payload.model_dump())
     _apply_action_item_initial_status(action_item, payload)
     repository.create_action_item(session, action_item)
+    delete_embeddings_for_meeting(session, meeting_id)
     session.commit()
     session.refresh(action_item)
     return action_item
@@ -99,6 +105,7 @@ def update_action_item(
     action_item = _get_action_item_for_meeting(session, meeting_id, action_item_id)
     data = payload.model_dump(exclude_unset=True)
     next_status = data.pop("status", None)
+    _ensure_section_belongs_to_meeting(session, meeting_id, data.get("section_id"))
 
     for field, value in data.items():
         setattr(action_item, field, value)
@@ -141,6 +148,25 @@ def _ensure_target_belongs_to_meeting(
         insight = repository.get_insight(session, payload.target_id)
         if insight is None or insight.meeting_id != meeting_id:
             raise NotFoundError("Insight item not found")
+    if payload.target_type == CitationTargetType.ANSWER:
+        answer = repository.get_qa_message(session, payload.target_id)
+        if answer is None:
+            raise NotFoundError("Answer not found")
+        if answer.meeting_id != meeting_id or answer.role != QAMessageRole.ASSISTANT:
+            raise ConflictError("Answer does not belong to this meeting")
+
+
+def _ensure_section_belongs_to_meeting(
+    session: Session, meeting_id: UUID, section_id: UUID | None
+) -> None:
+    if section_id is None:
+        return
+
+    section = repository.get_section(session, section_id)
+    if section is None:
+        raise NotFoundError("Meeting section not found")
+    if section.meeting_id != meeting_id:
+        raise ConflictError("Meeting section does not belong to this meeting")
 
 
 def _get_action_item_for_meeting(

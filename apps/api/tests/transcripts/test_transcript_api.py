@@ -1,5 +1,9 @@
+from uuid import UUID
+
 from fastapi.testclient import TestClient
 
+from app.db.models import Speaker
+from app.db.session import SessionLocal
 from app.main import app
 
 
@@ -67,3 +71,36 @@ def test_create_transcript_rejects_source_asset_from_another_meeting() -> None:
 
     assert response.status_code == 409
     assert "asset" in response.json()["detail"].casefold()
+
+
+def test_create_transcript_rejects_speaker_from_another_meeting() -> None:
+    client = TestClient(app)
+    source_meeting_id = client.post(
+        "/api/meetings", json={"title": "Source speaker"}
+    ).json()["id"]
+    target_meeting_id = client.post(
+        "/api/meetings", json={"title": "Target transcript"}
+    ).json()["id"]
+
+    with SessionLocal() as session:
+        speaker = Speaker(
+            meeting_id=UUID(source_meeting_id),
+            display_name="Alex",
+        )
+        session.add(speaker)
+        session.commit()
+        session.refresh(speaker)
+        speaker_id = speaker.id
+
+    response = client.post(
+        f"/api/meetings/{target_meeting_id}/transcript",
+        json={
+            "speaker_id": str(speaker_id),
+            "start_ms": 0,
+            "end_ms": 1000,
+            "text": "This should not attach to another meeting speaker.",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "speaker" in response.json()["detail"].casefold()

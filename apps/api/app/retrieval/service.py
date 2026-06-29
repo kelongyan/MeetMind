@@ -106,7 +106,10 @@ def ensure_meeting_embeddings(
     embedder: Embedder,
 ) -> None:
     get_meeting(session, meeting_id)
-    if repository.count_embeddings_for_meeting(session, meeting_id) == 0:
+    embedding_models = repository.list_embedding_models_for_meeting(
+        session, meeting_id
+    )
+    if embedding_models != {embedder.model_name}:
         rebuild_meeting_embeddings(session, meeting_id, embedder=embedder)
 
 

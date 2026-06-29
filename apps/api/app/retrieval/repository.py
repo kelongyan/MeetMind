@@ -41,6 +41,16 @@ def count_embeddings_for_meeting(session: Session, meeting_id: UUID) -> int:
     )
 
 
+def list_embedding_models_for_meeting(session: Session, meeting_id: UUID) -> set[str]:
+    return set(
+        session.scalars(
+            select(EmbeddingRecord.embedding_model)
+            .where(EmbeddingRecord.meeting_id == meeting_id)
+            .distinct()
+        )
+    )
+
+
 def list_transcript_segments(
     session: Session, meeting_id: UUID
 ) -> list[TranscriptSegment]:

@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import ActionItem, Citation, InsightItem
+from app.db.models import ActionItem, Citation, InsightItem, MeetingSection, QAMessage
 
 
 def create_insight(session: Session, insight: InsightItem) -> InsightItem:
@@ -42,6 +42,14 @@ def get_action_item(session: Session, action_item_id: UUID) -> ActionItem | None
 
 def get_insight(session: Session, insight_id: UUID) -> InsightItem | None:
     return session.get(InsightItem, insight_id)
+
+
+def get_section(session: Session, section_id: UUID) -> MeetingSection | None:
+    return session.get(MeetingSection, section_id)
+
+
+def get_qa_message(session: Session, message_id: UUID) -> QAMessage | None:
+    return session.get(QAMessage, message_id)
 
 
 def create_citation(session: Session, citation: Citation) -> Citation:

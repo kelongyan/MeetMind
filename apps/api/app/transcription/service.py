@@ -21,6 +21,7 @@ from app.jobs.service import get_processing_job
 from app.meetings.service import get_meeting
 from app.object_storage.local import LocalObjectStorage
 from app.providers.asr.base import Transcriber
+from app.retrieval.repository import delete_embeddings_for_meeting
 from app.transcription import repository
 from app.transcription.audio import AudioProcessor
 from app.transcription.schemas import TranscriptSegmentCreate
@@ -38,8 +39,10 @@ def create_segment(
 ) -> TranscriptSegment:
     get_meeting(session, meeting_id)
     _ensure_source_asset_belongs_to_meeting(session, meeting_id, payload)
+    _ensure_speaker_belongs_to_meeting(session, meeting_id, payload)
     segment = TranscriptSegment(meeting_id=meeting_id, **payload.model_dump())
     repository.create_segment(session, segment)
+    delete_embeddings_for_meeting(session, meeting_id)
     session.commit()
     session.refresh(segment)
     return segment
@@ -98,6 +101,7 @@ def run_transcription_job(
         normalized = processor.normalize_to_wav(source_path, work_dir)
         chunks = processor.slice_audio(normalized.path, work_dir / "chunks")
         repository.delete_segments_for_asset(session, asset.id)
+        delete_embeddings_for_meeting(session, job.meeting_id)
         segments: list[TranscriptSegment] = []
 
         for chunk in chunks:
@@ -156,3 +160,16 @@ def _ensure_source_asset_belongs_to_meeting(
         raise NotFoundError("Source asset not found")
     if asset.meeting_id != meeting_id:
         raise ConflictError("Source asset does not belong to this meeting")
+
+
+def _ensure_speaker_belongs_to_meeting(
+    session: Session, meeting_id: UUID, payload: TranscriptSegmentCreate
+) -> None:
+    if payload.speaker_id is None:
+        return
+
+    speaker = repository.get_speaker(session, payload.speaker_id)
+    if speaker is None:
+        raise NotFoundError("Speaker not found")
+    if speaker.meeting_id != meeting_id:
+        raise ConflictError("Speaker does not belong to this meeting")

@@ -1,5 +1,9 @@
+from uuid import UUID
+
 from fastapi.testclient import TestClient
 
+from app.db.models import MeetingSection, QAMessage, QAMessageRole
+from app.db.session import SessionLocal
 from app.main import app
 
 
@@ -109,3 +113,135 @@ def test_create_action_item_enforces_initial_status_rules() -> None:
     assert confirmed_response.json()["status"] == "confirmed"
     assert confirmed_response.json()["confirmed_by_user_id"] == "user-1"
     assert confirmed_response.json()["confirmed_at"] is not None
+
+
+def test_create_insight_and_action_item_reject_section_from_another_meeting() -> None:
+    client = TestClient(app)
+    source_meeting_id = client.post(
+        "/api/meetings", json={"title": "Source section"}
+    ).json()["id"]
+    target_meeting_id = client.post(
+        "/api/meetings", json={"title": "Target insight"}
+    ).json()["id"]
+    section_id = _create_section(source_meeting_id)
+
+    insight_response = client.post(
+        f"/api/meetings/{target_meeting_id}/insights",
+        json={
+            "section_id": str(section_id),
+            "type": "decision",
+            "title": "Wrong section",
+            "body": "This should not attach to another meeting section.",
+        },
+    )
+    action_response = client.post(
+        f"/api/meetings/{target_meeting_id}/action-items",
+        json={
+            "section_id": str(section_id),
+            "description": "This should not attach to another meeting section.",
+        },
+    )
+
+    assert insight_response.status_code == 409
+    assert "section" in insight_response.json()["detail"].casefold()
+    assert action_response.status_code == 409
+    assert "section" in action_response.json()["detail"].casefold()
+
+
+def test_update_insight_and_action_item_reject_section_from_another_meeting() -> None:
+    client = TestClient(app)
+    source_meeting_id = client.post(
+        "/api/meetings", json={"title": "Source section"}
+    ).json()["id"]
+    target_meeting_id = client.post(
+        "/api/meetings", json={"title": "Target update"}
+    ).json()["id"]
+    section_id = _create_section(source_meeting_id)
+    insight = client.post(
+        f"/api/meetings/{target_meeting_id}/insights",
+        json={
+            "type": "decision",
+            "title": "Local insight",
+            "body": "This starts in the target meeting.",
+        },
+    ).json()
+    action = client.post(
+        f"/api/meetings/{target_meeting_id}/action-items",
+        json={"description": "This starts in the target meeting."},
+    ).json()
+
+    insight_response = client.patch(
+        f"/api/meetings/{target_meeting_id}/insights/{insight['id']}",
+        json={"section_id": str(section_id)},
+    )
+    action_response = client.patch(
+        f"/api/meetings/{target_meeting_id}/action-items/{action['id']}",
+        json={"section_id": str(section_id)},
+    )
+
+    assert insight_response.status_code == 409
+    assert "section" in insight_response.json()["detail"].casefold()
+    assert action_response.status_code == 409
+    assert "section" in action_response.json()["detail"].casefold()
+
+
+def test_create_citation_rejects_answer_from_another_meeting() -> None:
+    client = TestClient(app)
+    source_meeting_id = client.post(
+        "/api/meetings", json={"title": "Source answer"}
+    ).json()["id"]
+    target_meeting_id = client.post(
+        "/api/meetings", json={"title": "Target citation"}
+    ).json()["id"]
+    segment_id = client.post(
+        f"/api/meetings/{target_meeting_id}/transcript",
+        json={
+            "start_ms": 1000,
+            "end_ms": 3000,
+            "text": "The target meeting has its own evidence.",
+        },
+    ).json()["id"]
+    answer_id = _create_answer_message(source_meeting_id)
+
+    response = client.post(
+        f"/api/meetings/{target_meeting_id}/citations",
+        json={
+            "target_type": "answer",
+            "target_id": str(answer_id),
+            "segment_id": segment_id,
+            "start_ms": 1000,
+            "end_ms": 3000,
+            "quote": "The target meeting has its own evidence.",
+        },
+    )
+
+    assert response.status_code == 409
+    assert "answer" in response.json()["detail"].casefold()
+
+
+def _create_section(meeting_id: str) -> UUID:
+    with SessionLocal() as session:
+        section = MeetingSection(
+            meeting_id=UUID(meeting_id),
+            title="Source section",
+            summary="Only for the source meeting.",
+        )
+        session.add(section)
+        session.commit()
+        session.refresh(section)
+        return section.id
+
+
+def _create_answer_message(meeting_id: str) -> UUID:
+    with SessionLocal() as session:
+        answer = QAMessage(
+            meeting_id=UUID(meeting_id),
+            conversation_id=UUID("00000000-0000-0000-0000-000000000001"),
+            role=QAMessageRole.ASSISTANT,
+            content="Source meeting answer.",
+            citation_ids=[],
+        )
+        session.add(answer)
+        session.commit()
+        session.refresh(answer)
+        return answer.id

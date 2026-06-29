@@ -5,8 +5,15 @@ from uuid import UUID
 import pytest
 from fastapi.testclient import TestClient
 
+from app.db.models import EmbeddingSourceType
 from app.db.session import SessionLocal
 from app.main import app
+from app.providers.embedding.base import EmbeddingResponse
+from app.retrieval.service import (
+    ensure_meeting_embeddings,
+    rebuild_meeting_embeddings,
+    search_meeting_evidence,
+)
 from app.structuring import service
 
 
@@ -25,6 +32,22 @@ class FakeExtractor:
             model_name="fake-structure-model",
             model_version="2026-06",
         )
+
+
+class KeywordEmbedder:
+    provider_name = "keyword-test"
+    model_name = "keyword-1536"
+
+    def embed(self, texts: list[str]) -> EmbeddingResponse:
+        vectors: list[list[float]] = []
+        for text in texts:
+            vector = [0.0] * 1536
+            if "rollout" in text.lower():
+                vector[0] = 1.0
+            else:
+                vector[1] = 1.0
+            vectors.append(vector)
+        return EmbeddingResponse(vectors=vectors, model_name=self.model_name)
 
 
 def test_run_structuring_job_writes_proposed_outputs_and_citations() -> None:
@@ -136,6 +159,33 @@ def test_repeated_structuring_run_replaces_previous_generated_results() -> None:
     assert len(client.get(f"/api/meetings/{meeting_id}/citations").json()) == 5
 
 
+def test_structuring_outputs_after_embedding_build_are_searchable() -> None:
+    client = TestClient(app)
+    meeting_id, segment_ids, job_id = _create_meeting_with_structure_job(client)
+    embedder = KeywordEmbedder()
+
+    with SessionLocal() as session:
+        rebuild_meeting_embeddings(session, UUID(meeting_id), embedder=embedder)
+        service.run_structuring_job(
+            session,
+            job_id,
+            extractor=FakeExtractor([_rollout_action_extraction(segment_ids)]),
+        )
+
+    with SessionLocal() as session:
+        ensure_meeting_embeddings(session, UUID(meeting_id), embedder=embedder)
+        hits = search_meeting_evidence(
+            session,
+            UUID(meeting_id),
+            "Who owns the rollout checklist?",
+            embedder=embedder,
+            limit=5,
+        )
+
+    assert hits
+    assert any(hit.source_type == EmbeddingSourceType.ACTION_ITEM for hit in hits)
+
+
 def _create_meeting_with_structure_job(
     client: TestClient,
 ) -> tuple[str, list[str], UUID]:
@@ -245,6 +295,35 @@ def _valid_extraction(segment_ids: list[str]) -> str:
             "action_items": [
                 {
                     "description": "Prepare the migration plan.",
+                    "owner_text": "Alex",
+                    "due_text": "Friday",
+                    "confidence": 0.88,
+                    "citations": [
+                        {
+                            "segment_id": segment_ids[1],
+                            "start_ms": 5000,
+                            "end_ms": 9000,
+                            "quote": "Alex will prepare the migration plan by Friday",
+                            "confidence": 0.9,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+
+def _rollout_action_extraction(segment_ids: list[str]) -> str:
+    return json.dumps(
+        {
+            "meeting_brief": None,
+            "discussion_points": [],
+            "decisions": [],
+            "risks": [],
+            "open_questions": [],
+            "action_items": [
+                {
+                    "description": "Prepare the rollout checklist.",
                     "owner_text": "Alex",
                     "due_text": "Friday",
                     "confidence": 0.88,

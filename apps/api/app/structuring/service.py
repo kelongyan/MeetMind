@@ -33,6 +33,7 @@ from app.providers.llm.base import (
     LLMExtractor,
     TranscriptEvidence,
 )
+from app.retrieval.repository import delete_embeddings_for_meeting
 from app.structuring import repository
 from app.structuring.schemas import (
     StructuredCitationDraft,
@@ -139,6 +140,7 @@ def run_structuring_job(
         repository.delete_generated_outputs(
             session, meeting.id, prompt_version=version
         )
+        delete_embeddings_for_meeting(session, meeting.id)
         insights, action_items, citations = _persist_extraction(
             session,
             job.meeting_id,

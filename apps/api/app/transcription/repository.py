@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.models import TranscriptSegment
+from app.db.models import Speaker, TranscriptSegment
 
 
 def create_segment(session: Session, segment: TranscriptSegment) -> TranscriptSegment:
@@ -23,6 +23,10 @@ def list_segments(session: Session, meeting_id: UUID) -> list[TranscriptSegment]
 
 def get_segment(session: Session, segment_id: UUID) -> TranscriptSegment | None:
     return session.get(TranscriptSegment, segment_id)
+
+
+def get_speaker(session: Session, speaker_id: UUID) -> Speaker | None:
+    return session.get(Speaker, speaker_id)
 
 
 def delete_segments_for_asset(session: Session, source_asset_id: UUID) -> None:

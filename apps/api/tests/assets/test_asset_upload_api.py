@@ -1,11 +1,35 @@
 from hashlib import sha256
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import settings
+from app.db.session import SessionLocal
 from app.main import app
+from app.providers.embedding.base import EmbeddingResponse
+from app.retrieval.service import (
+    ensure_meeting_embeddings,
+    rebuild_meeting_embeddings,
+    search_meeting_evidence,
+)
+
+
+class KeywordEmbedder:
+    provider_name = "keyword-test"
+    model_name = "keyword-1536"
+
+    def embed(self, texts: list[str]) -> EmbeddingResponse:
+        vectors: list[list[float]] = []
+        for text in texts:
+            vector = [0.0] * 1536
+            if "rollout" in text.lower():
+                vector[0] = 1.0
+            else:
+                vector[1] = 1.0
+            vectors.append(vector)
+        return EmbeddingResponse(vectors=vectors, model_name=self.model_name)
 
 
 @pytest.fixture
@@ -94,3 +118,44 @@ def test_duplicate_upload_reuses_existing_asset_without_new_job(
     assert [item["id"] for item in assets_response.json()] == [
         first_body["asset"]["id"]
     ]
+
+
+def test_delete_transcript_asset_removes_imported_segments_and_embeddings(
+    upload_storage_dir: Path,
+) -> None:
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Delete transcript asset"}
+    ).json()["id"]
+    upload_response = client.post(
+        f"/api/meetings/{meeting_id}/assets",
+        files={
+            "file": (
+                "rollout.txt",
+                b"Nina will own the rollout checklist.",
+                "text/plain",
+            )
+        },
+    )
+    asset = upload_response.json()["asset"]
+    embedder = KeywordEmbedder()
+
+    with SessionLocal() as session:
+        rebuild_meeting_embeddings(session, UUID(meeting_id), embedder=embedder)
+
+    delete_response = client.delete(f"/api/assets/{asset['id']}")
+    transcript_response = client.get(f"/api/meetings/{meeting_id}/transcript")
+
+    with SessionLocal() as session:
+        ensure_meeting_embeddings(session, UUID(meeting_id), embedder=embedder)
+        hits = search_meeting_evidence(
+            session,
+            UUID(meeting_id),
+            "Who owns the rollout checklist?",
+            embedder=embedder,
+            limit=5,
+        )
+
+    assert delete_response.status_code == 204
+    assert transcript_response.json() == []
+    assert hits == []

@@ -20,6 +20,7 @@ from app.exceptions import InvalidFileTypeError, NotFoundError
 from app.jobs.repository import create_job
 from app.meetings.service import get_meeting
 from app.object_storage.local import LocalObjectStorage
+from app.retrieval.repository import delete_embeddings_for_meeting
 from app.transcription import repository as transcript_repository
 from app.transcription.importer import import_transcript_file
 
@@ -86,6 +87,7 @@ async def upload_asset(
             )
         if imported_segments:
             asset.duration_ms = max(segment.end_ms for segment in imported_segments)
+            delete_embeddings_for_meeting(session, meeting_id)
 
     job = ProcessingJob(
         meeting_id=meeting_id,
@@ -113,6 +115,8 @@ def delete_asset(session: Session, asset_id: UUID) -> None:
         raise NotFoundError("Asset not found")
 
     asset.deleted_at = datetime.now(UTC)
+    transcript_repository.delete_segments_for_asset(session, asset.id)
+    delete_embeddings_for_meeting(session, asset.meeting_id)
     LocalObjectStorage(settings.upload_storage_dir).delete_uri(asset.storage_uri)
     session.commit()
 
