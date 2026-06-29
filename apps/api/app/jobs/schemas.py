@@ -20,6 +20,8 @@ class ProcessingJobRead(BaseModel):
     progress: int = Field(ge=0, le=100)
     provider: str | None
     input_asset_id: UUID | None
+    retry_of_job_id: UUID | None
+    attempt_number: int
     failure_code: str | None
     failure_message: str | None
     retryable: bool

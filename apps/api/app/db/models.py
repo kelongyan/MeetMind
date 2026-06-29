@@ -212,6 +212,10 @@ class ProcessingJob(Base):
     input_asset_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("meeting_assets.id", ondelete="SET NULL")
     )
+    retry_of_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("processing_jobs.id", ondelete="SET NULL")
+    )
+    attempt_number: Mapped[int] = mapped_column(Integer, default=1)
     failure_code: Mapped[str | None] = mapped_column(String(128))
     failure_message: Mapped[str | None] = mapped_column(Text)
     retryable: Mapped[bool] = mapped_column(Boolean, default=True)

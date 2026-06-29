@@ -46,27 +46,60 @@ MeetMind 是一个面向会议场景的可信会议智能系统，目标是把�
 
 ---
 
+## 本地启动
+
+本项目统一使用 pnpm，不使用 npm/yarn。
+
+```powershell
+Copy-Item .env.example .env
+pnpm install
+pnpm infra:up
+cd apps/api
+.\.venv\Scripts\python -m alembic upgrade head
+.\.venv\Scripts\python -m uvicorn app.main:app --reload
+```
+
+另开一个 PowerShell 启动前端：
+
+```powershell
+pnpm --filter @meetmind/web dev
+```
+
+核心依赖通过 `pnpm infra:up` 一条命令启动：PostgreSQL/pgvector、Redis、MinIO。Compose 数据默认落在 `F:\MeetMind\storage\docker`，避免占用 C 盘 Docker 默认数据区；如需彻底迁移 Docker Desktop 自身镜像/缓存，仍要在 Docker Desktop 设置里把数据目录迁到 F 盘。
+
+常用维护命令：
+
+```powershell
+pnpm infra:down
+New-Item -ItemType Directory -Force storage\backups | Out-Null
+docker compose -f infra\docker-compose.yml exec -T postgres pg_dump -U meetmind meetmind | Set-Content -Encoding utf8 storage\backups\meetmind.sql
+docker compose -f infra\docker-compose.yml down
+Remove-Item -Recurse -Force storage\docker\postgres
+pnpm infra:up
+cd apps/api
+.\.venv\Scripts\python -m alembic upgrade head
+```
+
+Phase 8 的 golden sample 位于 `samples\meetings\phase8-golden-sample.json`，后端集成测试会用它验证“上传 -> transcript/action/citation -> Q&A”的本地闭环。Provider 日志统一落在 `meetmind.provider` logger，包含 `provider`、`model`、`prompt_version`、`latency_ms`、`estimated_units`、`cost_estimate_usd` 和失败信息。成本估算可通过 `.env` 中的 `LLM_COST_PER_1K_CHARS_USD`、`EMBEDDING_COST_PER_1K_CHARS_USD`、`QA_COST_PER_1K_CHARS_USD` 配置。
+
+---
+
 ## 当前仓库状态
 
-当前仓库处于架构与开发规划阶段，尚未进入应用代码实现。
+当前仓库已完成 Phase 0-8，具备本地核心依赖启动、后端稳定性测试、provider telemetry 和基础部署说明。
 
 已完成：
 
-- 项目总览与核心产品原则；
-- 产品形态与交付路线；
-- 系统架构方案；
-- 技术栈方案；
-- 分阶段开发计划；
-- UI 设计方案；
-- 工程规则与协作规范；
-- GitHub 仓库初始化。
+- 前后端基础工程与 Docker Compose 核心依赖；
+- 后端领域模型、上传、转写、结构化、引用、Q&A；
+- 前端会议工作台、审阅流与行动项生命周期；
+- 本地测试、类型检查和阶段 tag 交付纪律。
 
 下一步：
 
-1. 开始 Phase 0，搭建前后端基础工程。
-2. 建立 Docker Compose、本地数据库和 Redis。
-3. 建立后端测试框架和前端基础检查命令。
-4. 推送 `phase-0-foundation` 阶段 tag。
+1. 手动验证会议工作台主要流程。
+2. 准备 v0.1 真实会议样例与外部 provider 配置。
+3. 按产品路线进入下一轮功能规划。
 
 ---
 

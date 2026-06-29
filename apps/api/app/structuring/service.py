@@ -27,6 +27,7 @@ from app.db.models import (
 from app.exceptions import ConflictError
 from app.jobs.service import get_processing_job
 from app.meetings.service import get_meeting
+from app.observability.provider_telemetry import observe_provider_call
 from app.providers.llm.base import (
     LLMExtractionRequest,
     LLMExtractor,
@@ -103,13 +104,21 @@ def run_structuring_job(
         last_error: StructuringValidationError | None = None
 
         for attempt in range(2):
-            response = extractor.extract(
-                _build_request(
-                    meeting.id,
-                    segments,
-                    prompt_version=version,
-                    retry_instruction=retry_instruction,
-                )
+            request = _build_request(
+                meeting.id,
+                segments,
+                prompt_version=version,
+                retry_instruction=retry_instruction,
+            )
+            response = observe_provider_call(
+                operation="llm.extract",
+                provider=getattr(extractor, "provider_name", None),
+                model=getattr(extractor, "model_name", None),
+                prompt_version=version,
+                estimated_units=_estimate_extraction_units(request),
+                cost_per_1k_units_usd=settings.llm_cost_per_1k_chars_usd,
+                call=lambda request=request: extractor.extract(request),
+                model_from_result=lambda result: result.model_name,
             )
             try:
                 extraction = _parse_extraction(response.content)
@@ -191,6 +200,13 @@ def _build_request(
         prompt_version=prompt_version,
         retry_instruction=retry_instruction,
     )
+
+
+def _estimate_extraction_units(request: LLMExtractionRequest) -> int:
+    schema_size = len(json.dumps(request.json_schema, separators=(",", ":")))
+    transcript_size = sum(len(segment.text) for segment in request.transcript)
+    retry_size = len(request.retry_instruction or "")
+    return schema_size + transcript_size + retry_size
 
 
 def _parse_extraction(content: str) -> StructuredMeetingExtraction:

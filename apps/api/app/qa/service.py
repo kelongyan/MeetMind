@@ -6,8 +6,10 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.models import Citation, CitationTargetType, QAMessage, QAMessageRole
 from app.meetings.service import get_meeting
+from app.observability.provider_telemetry import observe_provider_call
 from app.providers.embedding.base import Embedder
 from app.providers.qa.base import (
     AnswerEvidence,
@@ -46,12 +48,20 @@ def ask_meeting_question(
         question_text,
         embedder=embedder,
     )
-    synthesis = answer_synthesizer.synthesize(
-        AnswerSynthesisRequest(
-            meeting_id=meeting_id,
-            question=question_text,
-            evidence=evidence,
-        )
+    request = AnswerSynthesisRequest(
+        meeting_id=meeting_id,
+        question=question_text,
+        evidence=evidence,
+    )
+    synthesis = observe_provider_call(
+        operation="qa.synthesize",
+        provider=getattr(answer_synthesizer, "provider_name", None),
+        model=getattr(answer_synthesizer, "model_name", None),
+        prompt_version=None,
+        estimated_units=_estimate_answer_units(question_text, evidence),
+        cost_per_1k_units_usd=settings.qa_cost_per_1k_chars_usd,
+        call=lambda: answer_synthesizer.synthesize(request),
+        model_from_result=lambda result: result.model_name,
     )
 
     question = repository.create_message(
@@ -97,6 +107,12 @@ def ask_meeting_question(
         question=question,
         answer=answer,
         citations=citations,
+    )
+
+
+def _estimate_answer_units(question: str, evidence: list[AnswerEvidence]) -> int:
+    return len(question) + sum(
+        len(item.source_text) + len(item.quote) for item in evidence
     )
 
 

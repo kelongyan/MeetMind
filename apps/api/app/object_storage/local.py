@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from shutil import rmtree
 from uuid import UUID, uuid4
 
 from fastapi import UploadFile
@@ -57,11 +58,18 @@ class LocalObjectStorage:
         target = self.path_for_uri(storage_uri)
         target.unlink(missing_ok=True)
 
+    def delete_meeting(self, meeting_id: UUID) -> None:
+        target = self._safe_child_path(str(meeting_id))
+        rmtree(target, ignore_errors=True)
+
     def path_for_uri(self, storage_uri: str) -> Path:
         if not storage_uri.startswith("local://"):
             raise ValueError("Only local:// storage URIs are supported")
 
         relative_path = storage_uri.removeprefix("local://")
+        return self._safe_child_path(relative_path)
+
+    def _safe_child_path(self, relative_path: str) -> Path:
         target = (self.root / relative_path).resolve()
         root = self.root.resolve()
         if root not in target.parents:

@@ -17,6 +17,7 @@ from app.db.models import (
     MeetingStatus,
 )
 from app.meetings.service import get_meeting
+from app.observability.provider_telemetry import observe_provider_call
 from app.providers.embedding.base import Embedder
 from app.providers.qa.base import AnswerEvidence
 from app.retrieval import repository
@@ -60,7 +61,17 @@ def rebuild_meeting_embeddings(
             source_counts={},
         )
 
-    response = embedder.embed([source.text for source in sources])
+    texts = [source.text for source in sources]
+    response = observe_provider_call(
+        operation="embedding.embed",
+        provider=getattr(embedder, "provider_name", None),
+        model=embedder.model_name,
+        prompt_version=None,
+        estimated_units=sum(len(text) for text in texts),
+        cost_per_1k_units_usd=settings.embedding_cost_per_1k_chars_usd,
+        call=lambda: embedder.embed(texts),
+        model_from_result=lambda result: result.model_name,
+    )
     source_counts: dict[EmbeddingSourceType, int] = {}
     for source, vector in zip(sources, response.vectors, strict=True):
         repository.create_embedding(
@@ -109,7 +120,16 @@ def search_meeting_evidence(
     min_score: float | None = None,
 ) -> list[AnswerEvidence]:
     get_meeting(session, meeting_id)
-    response = embedder.embed([question])
+    response = observe_provider_call(
+        operation="embedding.search_query",
+        provider=getattr(embedder, "provider_name", None),
+        model=embedder.model_name,
+        prompt_version=None,
+        estimated_units=len(question),
+        cost_per_1k_units_usd=settings.embedding_cost_per_1k_chars_usd,
+        call=lambda: embedder.embed([question]),
+        model_from_result=lambda result: result.model_name,
+    )
     if not response.vectors:
         return []
 

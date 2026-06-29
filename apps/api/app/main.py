@@ -8,6 +8,7 @@ from app.exceptions import ConflictError, InvalidFileTypeError, NotFoundError
 from app.insights.router import router as insights_router
 from app.jobs.router import router as jobs_router
 from app.meetings.router import router as meetings_router
+from app.observability.provider_telemetry import ProviderCallError
 from app.qa.router import router as qa_router
 from app.structuring.router import router as structuring_router
 from app.transcription.router import router as transcription_router
@@ -44,6 +45,13 @@ def invalid_file_type_handler(
     _request: Request, exc: InvalidFileTypeError
 ) -> JSONResponse:
     return JSONResponse(status_code=415, content={"detail": exc.detail})
+
+
+@app.exception_handler(ProviderCallError)
+def provider_call_error_handler(
+    _request: Request, exc: ProviderCallError
+) -> JSONResponse:
+    return JSONResponse(status_code=502, content={"detail": exc.detail})
 
 
 @app.get("/health", tags=["health"])

@@ -1,0 +1,33 @@
+{
+  "title": "Phase 8 Golden Sample",
+  "language": "en",
+  "upload_filename": "phase8-golden-transcript.txt",
+  "upload_text": "Nina will own the rollout checklist before Friday. Morgan will confirm the backup plan.",
+  "transcript_segments": [
+    {
+      "start_ms": 1000,
+      "end_ms": 6000,
+      "text": "Nina will own the rollout checklist before Friday.",
+      "confidence": 0.96
+    }
+  ],
+  "action_items": [
+    {
+      "description": "Prepare the rollout checklist.",
+      "owner_text": "Nina",
+      "due_text": "Friday",
+      "confidence": 0.9
+    }
+  ],
+  "citations": [
+    {
+      "target_type": "action_item",
+      "start_ms": 1000,
+      "end_ms": 6000,
+      "quote": "Nina will own the rollout checklist before Friday.",
+      "confidence": 0.94
+    }
+  ],
+  "question": "Who owns the rollout checklist?",
+  "expected_answer_contains": "Nina"
+}

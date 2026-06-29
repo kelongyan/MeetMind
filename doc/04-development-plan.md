@@ -87,7 +87,7 @@ git push origin phase-0-foundation
 | Phase 5 | 会议工作台前端 | Done | 上传页、会议列表、会议详情、Transcript 与洞察联动 |
 | Phase 6 | 单会议 Q&A | Done | Embedding、检索、基于引用的回答 |
 | Phase 7 | 审阅与行动闭环 | Done | AI 结果编辑、确认、Action Item 状态流转 |
-| Phase 8 | 稳定性与部署准备 | Not Started | 测试样例、日志、错误恢复、Docker、本地部署说明 |
+| Phase 8 | 稳定性与部署准备 | Done | 测试样例、日志、错误恢复、Docker、本地部署说明 |
 
 ---
 
@@ -689,7 +689,14 @@ pnpm typecheck
 pnpm test
 ```
 
-### 13.7 阶段标记
+### 13.7 验收记录
+
+- `pnpm infra:up` 已验证核心依赖可一条命令启动。
+- 后端迁移已验证到 `alembic head`。
+- 后端全量测试覆盖 golden sample、job retry、provider 失败恢复、会议删除文件清理。
+- 前端 lint、typecheck、test、build 已验证通过。
+
+### 13.8 阶段标记
 
 ```powershell
 git add apps web infra samples doc

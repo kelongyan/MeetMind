@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 1536
     qa_answer_provider: str = "extractive"
     qa_min_retrieval_score: float = 0.1
+    llm_cost_per_1k_chars_usd: float = 0.0
+    embedding_cost_per_1k_chars_usd: float = 0.0
+    qa_cost_per_1k_chars_usd: float = 0.0
     cors_allowed_origins: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
