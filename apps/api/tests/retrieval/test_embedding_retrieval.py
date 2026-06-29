@@ -156,6 +156,32 @@ def test_ensure_embeddings_rebuilds_when_embedding_model_changes() -> None:
     assert any("rollout checklist" in hit.quote.lower() for hit in hits)
 
 
+def test_rebuild_embeddings_preserves_published_meeting_status() -> None:
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Published evidence"}
+    ).json()["id"]
+    client.post(
+        f"/api/meetings/{meeting_id}/transcript",
+        json={
+            "start_ms": 1000,
+            "end_ms": 3000,
+            "text": "Nina will own the rollout checklist.",
+            "confidence": 0.95,
+        },
+    )
+    client.patch(f"/api/meetings/{meeting_id}", json={"status": "published"})
+
+    with SessionLocal() as session:
+        rebuild_meeting_embeddings(
+            session, UUID(meeting_id), embedder=KeywordEmbedder()
+        )
+
+    response = client.get(f"/api/meetings/{meeting_id}")
+
+    assert response.json()["status"] == "published"
+
+
 def test_new_transcript_segment_after_embedding_build_is_searchable() -> None:
     client = TestClient(app)
     meeting_id = client.post("/api/meetings", json={"title": "Live notes"}).json()[

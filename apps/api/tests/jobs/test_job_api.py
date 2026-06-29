@@ -10,14 +10,14 @@ def test_create_processing_job_and_read_status() -> None:
 
     create_response = client.post(
         f"/api/meetings/{meeting_id}/process",
-        json={"job_type": "transcribe", "provider": "local-test"},
+        json={"job_type": "structure", "provider": "local-test"},
     )
 
     assert create_response.status_code == 201
     job = create_response.json()
     assert job["id"]
     assert job["meeting_id"] == meeting_id
-    assert job["job_type"] == "transcribe"
+    assert job["job_type"] == "structure"
     assert job["status"] == "queued"
     assert job["progress"] == 0
     assert job["provider"] == "local-test"
@@ -34,11 +34,11 @@ def test_list_processing_jobs_for_meeting() -> None:
     ]
     first_job = client.post(
         f"/api/meetings/{meeting_id}/process",
-        json={"job_type": "transcribe", "provider": "local-test"},
+        json={"job_type": "structure", "provider": "local-test"},
     ).json()
     second_job = client.post(
         f"/api/meetings/{meeting_id}/process",
-        json={"job_type": "structure", "provider": "local-test"},
+        json={"job_type": "embed", "provider": "local-test"},
     ).json()
 
     response = client.get(f"/api/meetings/{meeting_id}/jobs")
@@ -70,3 +70,37 @@ def test_create_processing_job_rejects_asset_from_another_meeting() -> None:
 
     assert response.status_code == 409
     assert "asset" in response.json()["detail"].casefold()
+
+
+def test_create_transcribe_job_requires_audio_or_video_asset() -> None:
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Transcribe asset"}
+    ).json()["id"]
+    text_asset_id = client.post(
+        f"/api/meetings/{meeting_id}/assets",
+        files={"file": ("notes.txt", b"Source transcript", "text/plain")},
+    ).json()["asset"]["id"]
+    audio_asset_id = client.post(
+        f"/api/meetings/{meeting_id}/assets",
+        files={"file": ("sample.wav", b"audio bytes", "audio/wav")},
+    ).json()["asset"]["id"]
+
+    missing_asset_response = client.post(
+        f"/api/meetings/{meeting_id}/process",
+        json={"job_type": "transcribe"},
+    )
+    text_asset_response = client.post(
+        f"/api/meetings/{meeting_id}/process",
+        json={"job_type": "transcribe", "input_asset_id": text_asset_id},
+    )
+    audio_asset_response = client.post(
+        f"/api/meetings/{meeting_id}/process",
+        json={"job_type": "transcribe", "input_asset_id": audio_asset_id},
+    )
+
+    assert missing_asset_response.status_code == 409
+    assert "asset" in missing_asset_response.json()["detail"].casefold()
+    assert text_asset_response.status_code == 409
+    assert "audio or video" in text_asset_response.json()["detail"].casefold()
+    assert audio_asset_response.status_code == 201

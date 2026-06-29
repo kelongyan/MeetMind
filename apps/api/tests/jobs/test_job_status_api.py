@@ -62,7 +62,7 @@ def test_non_retryable_failed_job_cannot_be_retried() -> None:
     meeting_id = meeting_response.json()["id"]
     job_response = client.post(
         f"/api/meetings/{meeting_id}/process",
-        json={"job_type": "transcribe"},
+        json={"job_type": "structure"},
     )
     job_id = job_response.json()["id"]
     client.patch(
@@ -87,7 +87,7 @@ def test_failed_job_requires_failure_code_and_message() -> None:
     meeting_id = meeting_response.json()["id"]
     job_response = client.post(
         f"/api/meetings/{meeting_id}/process",
-        json={"job_type": "transcribe"},
+        json={"job_type": "structure"},
     )
     job_id = job_response.json()["id"]
 

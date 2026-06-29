@@ -46,13 +46,14 @@ def rebuild_meeting_embeddings(
     embedder: Embedder,
 ) -> EmbeddingIndexResult:
     meeting = get_meeting(session, meeting_id)
+    previous_status = meeting.status
     sources = _collect_sources(session, meeting_id)
     model_name = embedder.model_name
 
     meeting.status = MeetingStatus.EMBEDDING
     repository.delete_embeddings_for_meeting(session, meeting_id)
     if not sources:
-        meeting.status = MeetingStatus.READY_FOR_REVIEW
+        meeting.status = _status_after_embedding(previous_status)
         session.commit()
         return EmbeddingIndexResult(
             meeting_id=meeting_id,
@@ -89,7 +90,7 @@ def rebuild_meeting_embeddings(
             source_counts.get(source.source_type, 0) + 1
         )
 
-    meeting.status = MeetingStatus.READY_FOR_REVIEW
+    meeting.status = _status_after_embedding(previous_status)
     session.commit()
     return EmbeddingIndexResult(
         meeting_id=meeting_id,
@@ -97,6 +98,12 @@ def rebuild_meeting_embeddings(
         created_count=len(sources),
         source_counts=source_counts,
     )
+
+
+def _status_after_embedding(previous_status: MeetingStatus) -> MeetingStatus:
+    if previous_status == MeetingStatus.PUBLISHED:
+        return MeetingStatus.PUBLISHED
+    return MeetingStatus.READY_FOR_REVIEW
 
 
 def ensure_meeting_embeddings(

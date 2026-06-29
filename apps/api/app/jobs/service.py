@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.assets.repository import get_asset
-from app.db.models import JobStatus, ProcessingJob
+from app.db.models import AssetType, JobStatus, JobType, ProcessingJob
 from app.exceptions import ConflictError, NotFoundError
 from app.jobs import repository
 from app.jobs.schemas import ProcessingJobCreate, ProcessingJobUpdate
@@ -88,6 +88,8 @@ def _ensure_input_asset_belongs_to_meeting(
     session: Session, meeting_id: UUID, payload: ProcessingJobCreate
 ) -> None:
     if payload.input_asset_id is None:
+        if payload.job_type == JobType.TRANSCRIBE:
+            raise ConflictError("Transcription job requires an input asset")
         return
 
     asset = get_asset(session, payload.input_asset_id)
@@ -95,3 +97,8 @@ def _ensure_input_asset_belongs_to_meeting(
         raise NotFoundError("Input asset not found")
     if asset.meeting_id != meeting_id:
         raise ConflictError("Input asset does not belong to this meeting")
+    if payload.job_type == JobType.TRANSCRIBE and asset.asset_type not in {
+        AssetType.AUDIO,
+        AssetType.VIDEO,
+    }:
+        raise ConflictError("Transcription requires an audio or video asset")
