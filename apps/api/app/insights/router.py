@@ -8,10 +8,12 @@ from app.insights import service
 from app.insights.schemas import (
     ActionItemCreate,
     ActionItemRead,
+    ActionItemUpdate,
     CitationCreate,
     CitationRead,
     InsightItemCreate,
     InsightItemRead,
+    InsightItemUpdate,
 )
 
 router = APIRouter(prefix="/api/meetings/{meeting_id}", tags=["insights"])
@@ -35,6 +37,16 @@ def list_insights(
     return service.list_insights(session, meeting_id)
 
 
+@router.patch("/insights/{insight_id}", response_model=InsightItemRead)
+def update_insight(
+    meeting_id: UUID,
+    insight_id: UUID,
+    payload: InsightItemUpdate,
+    session: Session = Depends(get_db_session),
+) -> InsightItemRead:
+    return service.update_insight(session, meeting_id, insight_id, payload)
+
+
 @router.post(
     "/action-items",
     response_model=ActionItemRead,
@@ -53,6 +65,16 @@ def list_action_items(
     meeting_id: UUID, session: Session = Depends(get_db_session)
 ) -> list[ActionItemRead]:
     return service.list_action_items(session, meeting_id)
+
+
+@router.patch("/action-items/{action_item_id}", response_model=ActionItemRead)
+def update_action_item(
+    meeting_id: UUID,
+    action_item_id: UUID,
+    payload: ActionItemUpdate,
+    session: Session = Depends(get_db_session),
+) -> ActionItemRead:
+    return service.update_action_item(session, meeting_id, action_item_id, payload)
 
 
 @router.post(

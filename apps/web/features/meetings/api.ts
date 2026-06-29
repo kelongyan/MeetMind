@@ -36,6 +36,24 @@ export interface AskQuestionPayload {
   conversation_id?: string | null;
 }
 
+export interface UpdateInsightPayload {
+  title?: string;
+  body?: string;
+  status?: InsightItem["status"];
+  confidence?: number | null;
+}
+
+export interface UpdateActionItemPayload {
+  description?: string;
+  owner_text?: string | null;
+  owner_user_id?: string | null;
+  due_text?: string | null;
+  due_date?: string | null;
+  status?: ActionItem["status"];
+  confidence?: number | null;
+  confirmed_by_user_id?: string | null;
+}
+
 export interface MeetMindApi {
   listMeetings(): Promise<Meeting[]>;
   getMeeting(meetingId: string): Promise<Meeting>;
@@ -44,7 +62,17 @@ export interface MeetMindApi {
   uploadAsset(meetingId: string, file: File): Promise<AssetUploadResult>;
   listTranscript(meetingId: string): Promise<TranscriptSegment[]>;
   listInsights(meetingId: string): Promise<InsightItem[]>;
+  updateInsight(
+    meetingId: string,
+    insightId: string,
+    payload: UpdateInsightPayload,
+  ): Promise<InsightItem>;
   listActionItems(meetingId: string): Promise<ActionItem[]>;
+  updateActionItem(
+    meetingId: string,
+    actionItemId: string,
+    payload: UpdateActionItemPayload,
+  ): Promise<ActionItem>;
   listCitations(meetingId: string): Promise<Citation[]>;
   askQuestion(
     meetingId: string,
@@ -96,8 +124,30 @@ export function createMeetMindApi(
       requestJson<TranscriptSegment[]>(`/api/meetings/${meetingId}/transcript`),
     listInsights: (meetingId) =>
       requestJson<InsightItem[]>(`/api/meetings/${meetingId}/insights`),
+    updateInsight: (meetingId, insightId, payload) =>
+      requestJson<InsightItem>(
+        `/api/meetings/${meetingId}/insights/${insightId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      ),
     listActionItems: (meetingId) =>
       requestJson<ActionItem[]>(`/api/meetings/${meetingId}/action-items`),
+    updateActionItem: (meetingId, actionItemId, payload) =>
+      requestJson<ActionItem>(
+        `/api/meetings/${meetingId}/action-items/${actionItemId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      ),
     listCitations: (meetingId) =>
       requestJson<Citation[]>(`/api/meetings/${meetingId}/citations`),
     askQuestion: (meetingId, payload) =>

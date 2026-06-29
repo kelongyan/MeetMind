@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db.models import (
     ActionItem,
+    ActionItemStatus,
     Citation,
     CitationTargetType,
     EmbeddingRecord,
@@ -165,6 +166,7 @@ def _collect_sources(session: Session, meeting_id: UUID) -> list[_EmbeddingSourc
     sources.extend(
         _action_item_source(item)
         for item in repository.list_action_items(session, meeting_id)
+        if item.status != ActionItemStatus.CANCELED
     )
     return [source for source in sources if source.text.strip()]
 

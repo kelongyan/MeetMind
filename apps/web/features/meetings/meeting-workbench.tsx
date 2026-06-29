@@ -3,25 +3,35 @@
 import {
   AlertCircle,
   Bot,
+  Check,
   FileAudio,
   Link2,
   Loader2,
   MessageSquareText,
+  Pencil,
+  Play,
   Plus,
   RefreshCcw,
   Search,
   Send,
   UploadCloud,
+  X,
 } from "lucide-react";
 import {
   type FormEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
 
-import { ApiError, createMeetMindApi } from "./api";
+import {
+  ApiError,
+  createMeetMindApi,
+  type UpdateActionItemPayload,
+  type UpdateInsightPayload,
+} from "./api";
 import type {
   Citation,
   Meeting,
@@ -41,6 +51,8 @@ import {
   type StatusTone,
 } from "./view-model";
 
+type InsightGroup = ReturnType<typeof buildInsightGroups>[number];
+type InsightCardItem = InsightGroup["items"][number];
 type LoadState = "idle" | "loading" | "success" | "error";
 
 const statusFilters: Array<{ value: MeetingStatusFilter; label: string }> = [
@@ -52,6 +64,7 @@ const statusFilters: Array<{ value: MeetingStatusFilter; label: string }> = [
   { value: "published", label: "Published" },
   { value: "failed", label: "Failed" },
 ];
+const REVIEWER_USER_ID = "local-user";
 
 export function MeetingWorkbench() {
   const api = useMemo(() => createMeetMindApi(), []);
@@ -75,6 +88,8 @@ export function MeetingWorkbench() {
   const [qaResponses, setQaResponses] = useState<QAResponse[]>([]);
   const [qaState, setQaState] = useState<LoadState>("idle");
   const [qaError, setQaError] = useState<string | null>(null);
+  const [reviewState, setReviewState] = useState<LoadState>("idle");
+  const [reviewMessage, setReviewMessage] = useState<string | null>(null);
   const [highlightedSegmentId, setHighlightedSegmentId] = useState<string | null>(
     null,
   );
@@ -124,6 +139,8 @@ export function MeetingWorkbench() {
     setQaResponses([]);
     setQaState("idle");
     setQaError(null);
+    setReviewState("idle");
+    setReviewMessage(null);
     setHighlightedSegmentId(null);
   }, [loadDetail, selectedMeetingId]);
 
@@ -211,6 +228,46 @@ export function MeetingWorkbench() {
     } catch (error) {
       setQaState("error");
       setQaError(toErrorMessage(error, "无法回答该问题，请稍后重试。"));
+    }
+  }
+
+  async function handleUpdateInsight(
+    insightId: string,
+    payload: UpdateInsightPayload,
+  ) {
+    if (!selectedMeetingId) {
+      return;
+    }
+    setReviewState("loading");
+    setReviewMessage(null);
+    try {
+      await api.updateInsight(selectedMeetingId, insightId, payload);
+      await loadDetail(selectedMeetingId);
+      setReviewState("success");
+      setReviewMessage("Insight updated.");
+    } catch (error) {
+      setReviewState("error");
+      setReviewMessage(toErrorMessage(error, "无法更新 insight。"));
+    }
+  }
+
+  async function handleUpdateActionItem(
+    actionItemId: string,
+    payload: UpdateActionItemPayload,
+  ) {
+    if (!selectedMeetingId) {
+      return;
+    }
+    setReviewState("loading");
+    setReviewMessage(null);
+    try {
+      await api.updateActionItem(selectedMeetingId, actionItemId, payload);
+      await loadDetail(selectedMeetingId);
+      setReviewState("success");
+      setReviewMessage("Action item updated.");
+    } catch (error) {
+      setReviewState("error");
+      setReviewMessage(toErrorMessage(error, "无法更新 action item。"));
     }
   }
 
@@ -412,10 +469,14 @@ export function MeetingWorkbench() {
                 onCitationClick={handleCitationClick}
                 onQaQuestionChange={setQaQuestion}
                 onSubmitQuestion={handleAskQuestion}
+                onUpdateActionItem={handleUpdateActionItem}
+                onUpdateInsight={handleUpdateInsight}
                 qaError={qaError}
                 qaQuestion={qaQuestion}
                 qaResponses={qaResponses}
                 qaState={qaState}
+                reviewMessage={reviewMessage}
+                reviewState={reviewState}
                 selectedMeeting={selectedMeeting}
               />
             </div>
@@ -495,10 +556,14 @@ function MeetingDetail({
   onCitationClick,
   onQaQuestionChange,
   onSubmitQuestion,
+  onUpdateActionItem,
+  onUpdateInsight,
   qaError,
   qaQuestion,
   qaResponses,
   qaState,
+  reviewMessage,
+  reviewState,
   selectedMeeting,
 }: {
   detail: MeetingDetailData | null;
@@ -509,10 +574,17 @@ function MeetingDetail({
   onCitationClick: (citation: Citation | { segmentId: string }) => void;
   onQaQuestionChange: (question: string) => void;
   onSubmitQuestion: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdateActionItem: (
+    actionItemId: string,
+    payload: UpdateActionItemPayload,
+  ) => void;
+  onUpdateInsight: (insightId: string, payload: UpdateInsightPayload) => void;
   qaError: string | null;
   qaQuestion: string;
   qaResponses: QAResponse[];
   qaState: LoadState;
+  reviewMessage: string | null;
+  reviewState: LoadState;
   selectedMeeting: Meeting | null;
 }) {
   if (!selectedMeeting) {
@@ -623,6 +695,10 @@ function MeetingDetail({
             <InsightsPanel
               insightGroups={insightGroups}
               onCitationClick={onCitationClick}
+              onUpdateActionItem={onUpdateActionItem}
+              onUpdateInsight={onUpdateInsight}
+              reviewMessage={reviewMessage}
+              reviewState={reviewState}
             />
           </section>
         </div>
@@ -738,17 +814,39 @@ function QAPanel({
 function InsightsPanel({
   insightGroups,
   onCitationClick,
+  onUpdateActionItem,
+  onUpdateInsight,
+  reviewMessage,
+  reviewState,
 }: {
   insightGroups: ReturnType<typeof buildInsightGroups>;
   onCitationClick: (citation: { segmentId: string }) => void;
+  onUpdateActionItem: (
+    actionItemId: string,
+    payload: UpdateActionItemPayload,
+  ) => void;
+  onUpdateInsight: (insightId: string, payload: UpdateInsightPayload) => void;
+  reviewMessage: string | null;
+  reviewState: LoadState;
 }) {
+  const reviewDisabled = reviewState === "loading";
+
   return (
     <section>
       <div className="flex h-12 items-center justify-between border-b border-slate-200 px-4">
         <h3 className="text-sm font-semibold text-slate-900">Insights</h3>
-        <span className="text-xs text-slate-500">AI proposed</span>
+        {reviewState === "loading" ? (
+          <Loader2 className="h-4 w-4 animate-spin text-blue-600" aria-hidden="true" />
+        ) : (
+          <span className="text-xs text-slate-500">AI proposed</span>
+        )}
       </div>
       <div className="max-h-[360px] overflow-y-auto p-3">
+        {reviewMessage ? (
+          <div className="mb-3">
+            <StatusNote message={reviewMessage} state={reviewState} />
+          </div>
+        ) : null}
         <div className="space-y-4">
           {insightGroups.map((group) => (
             <section key={group.id}>
@@ -814,6 +912,21 @@ function InsightsPanel({
                           ))
                         )}
                       </div>
+                      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                        {group.id === "action_items" ? (
+                          <ActionReviewControls
+                            disabled={reviewDisabled}
+                            item={item}
+                            onUpdate={onUpdateActionItem}
+                          />
+                        ) : (
+                          <InsightReviewControls
+                            disabled={reviewDisabled}
+                            item={item}
+                            onUpdate={onUpdateInsight}
+                          />
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>
@@ -823,6 +936,171 @@ function InsightsPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+function ActionReviewControls({
+  disabled,
+  item,
+  onUpdate,
+}: {
+  disabled: boolean;
+  item: InsightCardItem;
+  onUpdate: (actionItemId: string, payload: UpdateActionItemPayload) => void;
+}) {
+  const status = item.status;
+
+  function editActionItem() {
+    const description = window.prompt("Action item", item.title);
+    if (description === null) {
+      return;
+    }
+    const owner = window.prompt("Owner", item.ownerText ?? "");
+    if (owner === null) {
+      return;
+    }
+    const due = window.prompt("Due", item.dueText ?? "");
+    if (due === null) {
+      return;
+    }
+    onUpdate(item.id, {
+      description: description.trim() || item.title,
+      owner_text: owner.trim() || null,
+      due_text: due.trim() || null,
+    });
+  }
+
+  return (
+    <>
+      <ReviewButton disabled={disabled} onClick={editActionItem}>
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+        Edit
+      </ReviewButton>
+      {status === "proposed" ? (
+        <ReviewButton
+          disabled={disabled}
+          onClick={() =>
+            onUpdate(item.id, {
+              status: "confirmed",
+              confirmed_by_user_id: REVIEWER_USER_ID,
+            })
+          }
+          tone="success"
+        >
+          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+          Confirm
+        </ReviewButton>
+      ) : null}
+      {status === "confirmed" ? (
+        <ReviewButton
+          disabled={disabled}
+          onClick={() => onUpdate(item.id, { status: "in_progress" })}
+        >
+          <Play className="h-3.5 w-3.5" aria-hidden="true" />
+          Start
+        </ReviewButton>
+      ) : null}
+      {status === "confirmed" || status === "in_progress" ? (
+        <ReviewButton
+          disabled={disabled}
+          onClick={() => onUpdate(item.id, { status: "done" })}
+          tone="success"
+        >
+          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+          Done
+        </ReviewButton>
+      ) : null}
+      {status !== "done" && status !== "canceled" ? (
+        <ReviewButton
+          disabled={disabled}
+          onClick={() => onUpdate(item.id, { status: "canceled" })}
+          tone="danger"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
+          Cancel
+        </ReviewButton>
+      ) : null}
+    </>
+  );
+}
+
+function InsightReviewControls({
+  disabled,
+  item,
+  onUpdate,
+}: {
+  disabled: boolean;
+  item: InsightCardItem;
+  onUpdate: (insightId: string, payload: UpdateInsightPayload) => void;
+}) {
+  function editInsight() {
+    const title = window.prompt("Insight title", item.title);
+    if (title === null) {
+      return;
+    }
+    const body = window.prompt("Insight body", item.body);
+    if (body === null) {
+      return;
+    }
+    onUpdate(item.id, {
+      title: title.trim() || item.title,
+      body: body.trim() || item.body,
+    });
+  }
+
+  return (
+    <>
+      <ReviewButton disabled={disabled} onClick={editInsight}>
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+        Edit
+      </ReviewButton>
+      {item.status !== "confirmed" ? (
+        <ReviewButton
+          disabled={disabled}
+          onClick={() => onUpdate(item.id, { status: "confirmed" })}
+          tone="success"
+        >
+          <Check className="h-3.5 w-3.5" aria-hidden="true" />
+          Confirm
+        </ReviewButton>
+      ) : null}
+      {item.status !== "dismissed" ? (
+        <ReviewButton
+          disabled={disabled}
+          onClick={() => onUpdate(item.id, { status: "dismissed" })}
+          tone="danger"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
+          Dismiss
+        </ReviewButton>
+      ) : null}
+    </>
+  );
+}
+
+function ReviewButton({
+  children,
+  disabled,
+  onClick,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  disabled: boolean;
+  onClick: () => void;
+  tone?: "neutral" | "success" | "danger";
+}) {
+  return (
+    <button
+      className={[
+        "inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+        reviewButtonToneClassName(tone),
+      ].join(" ")}
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -895,6 +1173,18 @@ function toneClassName(tone: StatusTone): string {
     return "border-blue-200 bg-blue-50 text-blue-700";
   }
   return "border-slate-200 bg-slate-100 text-slate-700";
+}
+
+function reviewButtonToneClassName(
+  tone: "neutral" | "success" | "danger",
+): string {
+  if (tone === "success") {
+    return "border-green-200 bg-green-50 text-green-700 hover:bg-green-100";
+  }
+  if (tone === "danger") {
+    return "border-red-200 bg-red-50 text-red-700 hover:bg-red-100";
+  }
+  return "border-slate-200 bg-white text-slate-700 hover:bg-slate-100";
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {

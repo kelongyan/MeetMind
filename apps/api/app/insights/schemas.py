@@ -23,6 +23,15 @@ class InsightItemCreate(BaseModel):
     prompt_version: str | None = None
 
 
+class InsightItemUpdate(BaseModel):
+    section_id: UUID | None = None
+    type: InsightType | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    body: str | None = Field(default=None, min_length=1)
+    status: InsightStatus | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+
+
 class InsightItemRead(BaseModel):
     id: UUID
     meeting_id: UUID
@@ -56,6 +65,18 @@ class ActionItemCreate(BaseModel):
     created_by_ai: bool = True
     confirmed_by_user_id: str | None = None
     confirmed_at: datetime | None = None
+
+
+class ActionItemUpdate(BaseModel):
+    section_id: UUID | None = None
+    description: str | None = Field(default=None, min_length=1)
+    owner_text: str | None = None
+    owner_user_id: str | None = None
+    due_text: str | None = None
+    due_date: date | None = None
+    status: ActionItemStatus | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    confirmed_by_user_id: str | None = None
 
 
 class ActionItemRead(BaseModel):

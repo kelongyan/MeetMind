@@ -144,6 +144,85 @@ describe("MeetMind API client", () => {
     expect(response.answer.content).toBe("Nina owns rollout.");
     expect(response.citations[0].segment_id).toBe("segment-1");
   });
+
+  it("updates insights and action items through review endpoints", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: "insight-1",
+          meeting_id: "meeting-1",
+          section_id: null,
+          type: "decision",
+          title: "Updated decision",
+          body: "Updated body",
+          status: "dismissed",
+          confidence: 0.8,
+          model_name: null,
+          model_version: null,
+          prompt_version: null,
+          created_at: "2026-06-29T08:00:00Z",
+          updated_at: "2026-06-29T08:05:00Z",
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: "action-1",
+          meeting_id: "meeting-1",
+          section_id: null,
+          description: "Prepare rollout checklist.",
+          owner_text: "Nina",
+          owner_user_id: null,
+          due_text: "Friday",
+          due_date: null,
+          status: "confirmed",
+          confidence: 0.9,
+          model_name: null,
+          model_version: null,
+          prompt_version: null,
+          created_by_ai: true,
+          confirmed_by_user_id: "local-user",
+          confirmed_at: "2026-06-29T08:05:00Z",
+          created_at: "2026-06-29T08:00:00Z",
+          updated_at: "2026-06-29T08:05:00Z",
+        }),
+      );
+    const api = createMeetMindApi("http://api.test", fetchMock);
+
+    const insight = await api.updateInsight("meeting-1", "insight-1", {
+      title: "Updated decision",
+      status: "dismissed",
+    });
+    const action = await api.updateActionItem("meeting-1", "action-1", {
+      status: "confirmed",
+      confirmed_by_user_id: "local-user",
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://api.test/api/meetings/meeting-1/insights/insight-1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          title: "Updated decision",
+          status: "dismissed",
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "http://api.test/api/meetings/meeting-1/action-items/action-1",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "confirmed",
+          confirmed_by_user_id: "local-user",
+        }),
+      }),
+    );
+    expect(insight.status).toBe("dismissed");
+    expect(action.confirmed_by_user_id).toBe("local-user");
+  });
 });
 
 function jsonResponse(
