@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildInsightGroups,
   filterMeetings,
+  formatDateTime,
+  formatDuration,
   formatTimestamp,
   getMeetingStatusMeta,
 } from "./view-model";
+import { toErrorMessage } from "./components/shared/tone-utils";
 
 const meetings = [
   {
@@ -37,11 +40,11 @@ describe("meeting workbench view model", () => {
 
   it("maps backend status values to user-facing metadata", () => {
     expect(getMeetingStatusMeta("ready_for_review")).toMatchObject({
-      label: "Ready for review",
+      label: "待审阅",
       tone: "warning",
     });
     expect(getMeetingStatusMeta("failed_structuring")).toMatchObject({
-      label: "Failed",
+      label: "处理失败",
       tone: "danger",
     });
   });
@@ -50,6 +53,17 @@ describe("meeting workbench view model", () => {
     expect(formatTimestamp(0)).toBe("00:00");
     expect(formatTimestamp(65000)).toBe("01:05");
     expect(formatTimestamp(3671000)).toBe("1:01:11");
+  });
+
+  it("uses localized fallback labels for missing temporal metadata", () => {
+    expect(formatDuration(null)).toBe("未设置");
+    expect(formatDateTime(null)).toBe("未设置");
+  });
+
+  it("uses the localized fallback for browser network errors", () => {
+    expect(
+      toErrorMessage(new TypeError("Failed to fetch"), "无法读取会议列表，请稍后重试。")
+    ).toBe("无法读取会议列表，请稍后重试。");
   });
 
   it("orders insight groups and resolves citation chips to transcript segments", () => {

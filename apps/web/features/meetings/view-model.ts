@@ -49,33 +49,33 @@ export interface InsightGroupView {
 const insightGroupOrder: Array<Omit<InsightGroupView, "items">> = [
   {
     id: "action_items",
-    title: "Action Items",
-    emptyLabel: "No action items yet.",
+    title: "行动项",
+    emptyLabel: "暂无行动项。",
   },
-  { id: "decisions", title: "Decisions", emptyLabel: "No decisions yet." },
-  { id: "risks", title: "Risks", emptyLabel: "No risks yet." },
-  { id: "summary", title: "Summary", emptyLabel: "No summary yet." },
+  { id: "decisions", title: "决策", emptyLabel: "暂无决策。" },
+  { id: "risks", title: "风险", emptyLabel: "暂无风险。" },
+  { id: "summary", title: "摘要", emptyLabel: "暂无摘要。" },
   {
     id: "open_questions",
-    title: "Open Questions",
-    emptyLabel: "No open questions yet.",
+    title: "开放问题",
+    emptyLabel: "暂无开放问题。",
   },
 ];
 
 const statusMeta: Record<MeetingStatus, StatusMeta> = {
-  uploaded: { label: "Uploaded", tone: "neutral" },
-  media_processing: { label: "Processing media", tone: "info" },
-  transcribing: { label: "Transcribing", tone: "info" },
-  segmenting: { label: "Segmenting", tone: "info" },
-  structuring: { label: "Structuring", tone: "info" },
-  citing: { label: "Citing", tone: "info" },
-  embedding: { label: "Embedding", tone: "info" },
-  ready_for_review: { label: "Ready for review", tone: "warning" },
-  published: { label: "Published", tone: "success" },
-  failed_media_processing: { label: "Failed", tone: "danger" },
-  failed_transcription: { label: "Failed", tone: "danger" },
-  failed_structuring: { label: "Failed", tone: "danger" },
-  failed_embedding: { label: "Failed", tone: "danger" },
+  uploaded: { label: "已上传", tone: "neutral" },
+  media_processing: { label: "媒体处理中", tone: "info" },
+  transcribing: { label: "转写中", tone: "info" },
+  segmenting: { label: "分段中", tone: "info" },
+  structuring: { label: "结构化中", tone: "info" },
+  citing: { label: "证据匹配中", tone: "info" },
+  embedding: { label: "索引中", tone: "info" },
+  ready_for_review: { label: "待审阅", tone: "warning" },
+  published: { label: "已发布", tone: "success" },
+  failed_media_processing: { label: "处理失败", tone: "danger" },
+  failed_transcription: { label: "处理失败", tone: "danger" },
+  failed_structuring: { label: "处理失败", tone: "danger" },
+  failed_embedding: { label: "处理失败", tone: "danger" },
 };
 
 export function filterMeetings<T extends { title: string; status: string }>(
@@ -118,14 +118,14 @@ export function formatTimestamp(milliseconds: number): string {
 
 export function formatDuration(milliseconds?: number | null): string {
   if (milliseconds === undefined || milliseconds === null) {
-    return "Not set";
+    return "未设置";
   }
   return formatTimestamp(milliseconds);
 }
 
 export function formatDateTime(value?: string | null): string {
   if (!value) {
-    return "Not set";
+    return "未设置";
   }
   return new Intl.DateTimeFormat("zh-CN", {
     month: "2-digit",
@@ -183,15 +183,15 @@ export function buildInsightGroups(input: {
 
 export function confidenceLabel(confidence?: number | null): string {
   if (confidence === undefined || confidence === null) {
-    return "Needs review";
+    return "需核对";
   }
   if (confidence >= 0.85) {
-    return "High confidence";
+    return "高置信度";
   }
   if (confidence >= 0.65) {
-    return "Needs review";
+    return "需核对";
   }
-  return "Low confidence";
+  return "低置信度";
 }
 
 function groupCitationsByTarget(
@@ -215,7 +215,7 @@ function toCitationChips(
     label: formatTimestamp(citation.start_ms),
     quote: segmentIds.has(citation.segment_id)
       ? citation.quote
-      : "Referenced transcript segment is missing.",
+      : "引用的转写片段已缺失。",
     confidence: citation.confidence,
   }));
 }
