@@ -1,8 +1,13 @@
+import pytest
+
 from app.config import Settings
 
 
-def test_settings_have_safe_local_defaults() -> None:
-    settings = Settings()
+def test_settings_have_safe_local_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key in ("APP_NAME", "ENVIRONMENT", "DATABASE_URL", "REDIS_URL"):
+        monkeypatch.delenv(key, raising=False)
+
+    settings = Settings(_env_file=None)
 
     assert settings.app_name == "MeetMind API"
     assert settings.environment == "local"

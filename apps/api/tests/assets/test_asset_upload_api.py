@@ -39,6 +39,51 @@ def upload_storage_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return storage_dir
 
 
+def test_upload_without_auto_process_allows_disabled_llm_provider(
+    upload_storage_dir: Path,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "llm_provider", "disabled")
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Upload without LLM"}, headers=auth_headers
+    ).json()["id"]
+
+    response = client.post(
+        f"/api/meetings/{meeting_id}/assets",
+        files={"file": ("notes.txt", b"Plain transcript.", "text/plain")},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["asset"]["original_filename"] == "notes.txt"
+    assert body["job"]["job_type"] == "structure"
+
+
+def test_upload_rejects_unsupported_file_type_before_resolving_llm_provider(
+    upload_storage_dir: Path,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "llm_provider", "disabled")
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Bad upload"}, headers=auth_headers
+    ).json()["id"]
+
+    response = client.post(
+        f"/api/meetings/{meeting_id}/assets",
+        files={"file": ("payload.exe", b"not allowed", "application/octet-stream")},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 415
+    assert response.json()["detail"] == "Unsupported file type"
+    assert not upload_storage_dir.exists()
+
+
 def test_upload_meeting_file_creates_asset_and_queued_job(
     upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:

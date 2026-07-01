@@ -114,6 +114,38 @@ def test_run_transcription_job_endpoint_uses_provider_dependency(
     assert [segment["start_ms"] for segment in body["segments"]] == [0, 1000]
 
 
+def test_run_transcription_job_without_auto_process_allows_disabled_pipeline_providers(
+    upload_storage_dir: Path,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "llm_provider", "openai")
+    monkeypatch.setattr(settings, "openai_api_key", "test-key")
+    client = TestClient(app)
+    app.dependency_overrides[get_transcriber] = lambda: FakeTranscriber()
+    meeting_id = client.post(
+        "/api/meetings",
+        json={"title": "Run without pipeline providers"},
+        headers=auth_headers,
+    ).json()["id"]
+    upload_response = client.post(
+        f"/api/meetings/{meeting_id}/assets",
+        files={"file": ("endpoint.wav", _wave_bytes(duration_ms=1200), "audio/wav")},
+        headers=auth_headers,
+    )
+    job_id = upload_response.json()["job"]["id"]
+    monkeypatch.setattr(settings, "llm_provider", "disabled")
+    monkeypatch.setattr(settings, "embedding_provider", "disabled")
+
+    try:
+        run_response = client.post(f"/api/jobs/{job_id}/run", headers=auth_headers)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert run_response.status_code == 200
+    assert run_response.json()["job"]["status"] == "succeeded"
+
+
 def test_failed_transcription_preserves_existing_transcript(
     upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:

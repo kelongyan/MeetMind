@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user
@@ -10,10 +10,9 @@ from app.pagination import PaginatedResponse
 from app.pipeline import dispatch_pipeline
 from app.providers.asr.base import Transcriber
 from app.providers.asr.dependencies import get_transcriber
-from app.providers.embedding.base import Embedder
 from app.providers.embedding.dependencies import get_embedder
-from app.providers.llm.base import LLMExtractor
 from app.providers.llm.dependencies import get_llm_extractor
+from app.request_dependencies import resolve_request_dependency
 from app.transcription import service
 from app.transcription.schemas import (
     MeetingSectionRead,
@@ -74,12 +73,11 @@ def list_meeting_sections(
 @router.post("/api/jobs/{job_id}/run", response_model=TranscriptionRunRead)
 def run_transcription_job(
     job_id: UUID,
+    request: Request,
     background_tasks: BackgroundTasks,
     auto_process: bool = Query(default=False),
     session: Session = Depends(get_db_session),
     transcriber: Transcriber = Depends(get_transcriber),
-    extractor: LLMExtractor = Depends(get_llm_extractor),
-    embedder: Embedder = Depends(get_embedder),
     current_user: User = Depends(get_current_user),
 ) -> TranscriptionRunRead:
     result = service.run_transcription_job(
@@ -88,6 +86,8 @@ def run_transcription_job(
         transcriber=transcriber,
     )
     if auto_process:
+        extractor = resolve_request_dependency(request, get_llm_extractor)
+        embedder = resolve_request_dependency(request, get_embedder)
         dispatch_pipeline(
             session,
             job_id,

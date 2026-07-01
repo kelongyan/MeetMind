@@ -5,6 +5,7 @@ from fastapi import (
     Depends,
     File,
     Query,
+    Request,
     Response,
     UploadFile,
     status,
@@ -18,8 +19,8 @@ from app.db.models import User
 from app.db.session import get_db_session
 from app.pagination import PaginatedResponse
 from app.pipeline import run_pipeline_sync
-from app.providers.llm.base import LLMExtractor
 from app.providers.llm.dependencies import get_llm_extractor
+from app.request_dependencies import resolve_request_dependency
 
 router = APIRouter(tags=["assets"])
 
@@ -31,15 +32,16 @@ router = APIRouter(tags=["assets"])
 )
 async def upload_asset(
     meeting_id: UUID,
+    request: Request,
     response: Response,
     auto_process: bool = Query(default=False),
     file: UploadFile = File(...),
     session: Session = Depends(get_db_session),
-    extractor: LLMExtractor = Depends(get_llm_extractor),
     current_user: User = Depends(get_current_user),
 ) -> AssetUploadRead:
     result = await service.upload_asset(session, meeting_id, file)
     if auto_process and result.job is not None:
+        extractor = resolve_request_dependency(request, get_llm_extractor)
         run_pipeline_sync(
             session,
             result.job.id,
