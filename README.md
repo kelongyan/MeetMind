@@ -1,118 +1,303 @@
 # MeetMind
 
-MeetMind 是一个面向会议场景的可信会议智能系统，目标是把会议音频、视频、转写文本和人工记录转化为可验证、可检索、可执行的结构化工作资产。
+MeetMind 是一个可信会议智能工作台，用于把会议音频、视频、转写文本和人工记录整理成可验证、可检索、可追踪的团队知识资产。
 
-它不是只生成一段会议摘要的工具。MeetMind 更关注会议内容后续能不能被团队真正使用：每个关键结论能否回到原始发言，每个行动项是否有负责人和状态，每次问答是否有证据支撑，会议知识是否能在后续项目推进中继续复用。
+它不只是生成一段会议摘要，而是帮助团队保留会议事实、结构化关键结论、追踪后续行动，并在需要时回到原始证据。
 
----
+## 产品概览
 
-## 核心闭环
+MeetMind 面向会议后的真实协作场景：
+
+- 会议结束后快速整理 transcript、决策、风险、开放问题和行动项。
+- 为关键结论保留原始发言引用，降低 AI 幻觉和误读风险。
+- 让用户审阅 AI 结果，再进入正式状态。
+- 支持会议内问答，并保留带引用的回答历史。
+- 支持跨会议行动项追踪和知识搜索。
+- 提供 provider 状态、调用质量和成本估算的运维可见性。
+
+核心原则：
+
+| 原则 | 说明 |
+| --- | --- |
+| Source First | 原始会议资料是事实来源 |
+| Structured First | 关键输出以结构化数据保存 |
+| Evidence First | 决策、行动项和回答尽量带证据 |
+| Human-in-the-loop | AI 结果先审阅，再发布 |
+
+## 功能特性
+
+### 会议工作台
+
+- 创建会议并上传音频、视频、转写文本或字幕文件。
+- 查看带时间戳的 transcript。
+- 使用章节导航定位长会议内容。
+- 查看处理任务状态并执行 retry。
+- 在质量校验通过后发布会议。
+
+### 洞察与行动项
+
+- 提取讨论点、决策、风险和开放问题。
+- 提取行动项，包括负责人文本、截止时间文本、状态和置信度。
+- 支持确认、驳回、开始、完成或取消行动项。
+- 支持跨会议查看行动项，并按状态筛选。
+- 可从行动项跳回来源会议。
+
+### 引用与问答
+
+- 为结构化结果和问答答案保存 citation。
+- 点击 citation 回到 transcript 对应片段。
+- 支持围绕单场会议提问。
+- 保存 Q&A 历史。
+- 证据不足时拒绝编造答案。
+
+### 知识库
+
+- 按 workspace 搜索 transcript、insight 和 action item。
+- 查看历史决策。
+- 提示可能重复的行动项。
+- 跨会议结果保留来源会议和上下文线索。
+
+### 运维视图
+
+- 查看 ASR、LLM、Embedding、Q&A provider 配置状态。
+- 查看 provider 调用次数、失败次数、平均耗时和成本估算。
+- 预留任务同步 adapter 边界。
+- 不在界面展示 API key、token 或 webhook URL。
+
+## 技术栈
+
+| 模块 | 技术 |
+| --- | --- |
+| 前端 | Next.js 16、React 19、TypeScript、Tailwind CSS |
+| 后端 | FastAPI、SQLAlchemy、Alembic、Pydantic |
+| 数据库 | PostgreSQL、pgvector |
+| 队列与缓存 | Redis |
+| 对象存储 | MinIO / S3-compatible storage |
+| AI 能力 | ASR、LLM、Embedding、Q&A provider adapter |
+| 测试与质量 | pytest、ruff、Vitest、TypeScript、ESLint |
+| 包管理 | pnpm |
+
+## 仓库结构
 
 ```text
-上传会议资料
-  -> 生成带时间戳的转写
-  -> 结构化提取总结、决策、风险、行动项
-  -> 每个关键结论绑定原始发言证据
-  -> 用户审阅、修正、确认
-  -> 支持基于会议内容的问答
-  -> 沉淀为会议知识库
+MeetMind/
+  apps/
+    api/          FastAPI 后端服务
+    web/          Next.js 前端应用
+  infra/          Docker Compose 和数据库初始化脚本
+  doc/            项目资料、架构资料和阶段记录
+  samples/        样例会议数据
+  storage/        本地运行时存储目录
+  package.json    工作区脚本
 ```
 
----
+后端主要模块：
 
-## 当前方向
+```text
+apps/api/app/
+  action_items/   全局行动项接口
+  assets/         上传、资源记录和文件处理
+  db/             SQLAlchemy 模型和数据库会话
+  insights/       洞察、行动项、引用和审阅状态
+  jobs/           处理任务和 retry 血统
+  knowledge/      工作区搜索、历史决策、重复行动项提示
+  meetings/       会议生命周期和发布校验
+  observability/  provider telemetry
+  operations/     provider 状态、调用汇总、任务同步状态
+  providers/      ASR、LLM、Embedding、Q&A adapter
+  qa/             会议问答
+  retrieval/      embedding 和证据检索
+  structuring/    LLM 结构化提取
+  transcription/  音频、文本和字幕转写处理
+```
 
-- 产品形态：先做浏览器服务，后续扩展桌面助手、本地处理和混合部署。
-- 系统架构：模块化单体 + 异步任务队列。
-- 主技术栈：Next.js + FastAPI + PostgreSQL/pgvector + Redis/Celery + S3-compatible storage。
-- AI 策略：ASR、LLM、Embedding 全部通过 provider adapter 接入。
-- 核心原则：Source First、Structured First、Evidence First、Human-in-the-loop。
+前端主要模块：
 
----
+```text
+apps/web/features/meetings/
+  api.ts                         API client
+  types.ts                       前端类型定义
+  meeting-workbench.tsx          主工作台
+  components/action-items/       行动项总览
+  components/knowledge/          知识库视图
+  components/meeting-detail/     会议详情
+  components/operations/         运维视图
+  components/qa/                 会议问答
+  components/transcript/         transcript 和章节导航
+```
 
-## 文档入口
+## 环境要求
 
-建议按以下顺序阅读：
+- Windows PowerShell
+- Docker Desktop
+- Node.js 与 pnpm
+- Python 3.12+
+- 后端虚拟环境：`apps/api/.venv`
 
-| 顺序 | 文档 | 内容 |
-| --- | --- | --- |
-| 1 | [项目总览](./doc/00-overview.md) | 定位、趋势、核心问题、产品原则、v0.1 成功标准 |
-| 2 | [产品路线](./doc/01-product-roadmap.md) | 先浏览器服务，后续桌面/本地/混合部署 |
-| 3 | [系统架构](./doc/02-system-architecture.md) | 模块、数据流、数据模型、API、RAG、治理 |
-| 4 | [技术栈](./doc/03-technology-stack.md) | 技术选型、备选方案、暂不推荐路线 |
-| 5 | [开发计划](./doc/04-development-plan.md) | Phase 0-8、验收标准、阶段 tag |
-| 6 | [UI 设计](./doc/05-ui-design.md) | 正式工作台风格、白蓝灰视觉、页面与组件规范 |
-| 7 | [开发进展跟踪](./doc/06-progress-tracking.md) | 已完成、未完成、当前风险、整体进度 |
-| 8 | [开发规则](./RULE.md) | Git、代码规范、低耦合、测试、安全、阶段交付纪律 |
+## 配置
 
----
-
-## 本地启动
-
-本项目统一使用 pnpm，不使用 npm/yarn。
+复制环境变量示例：
 
 ```powershell
 Copy-Item .env.example .env
+```
+
+关键配置：
+
+```env
+DATABASE_URL=postgresql+psycopg://meetmind:meetmind@localhost:5432/meetmind
+REDIS_URL=redis://localhost:6379/0
+S3_ENDPOINT_URL=http://localhost:9000
+S3_BUCKET_NAME=meetmind-local
+
+ASR_PROVIDER=disabled
+OPENAI_API_KEY=
+OPENAI_TRANSCRIPTION_MODEL=whisper-1
+
+LLM_PROVIDER=disabled
+OPENAI_LLM_MODEL=gpt-4.1-mini
+LLM_PROMPT_VERSION=phase4-structure-v1
+
+EMBEDDING_PROVIDER=local
+LOCAL_EMBEDDING_MODEL=local-hash-1536
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+QA_ANSWER_PROVIDER=extractive
+
+TASK_SYNC_PROVIDER=disabled
+TASK_SYNC_WEBHOOK_URL=
+```
+
+默认情况下，ASR 和 LLM provider 关闭；本地 embedding 和 extractive Q&A 可用于开发验证。
+
+## 本地开发
+
+安装依赖：
+
+```powershell
 pnpm install
+```
+
+启动基础设施：
+
+```powershell
 pnpm infra:up
+```
+
+执行数据库迁移：
+
+```powershell
 cd apps/api
 .\.venv\Scripts\python -m alembic upgrade head
+```
+
+启动后端：
+
+```powershell
+cd apps/api
 .\.venv\Scripts\python -m uvicorn app.main:app --reload
 ```
 
-另开一个 PowerShell 启动前端：
+后端默认地址：
+
+```text
+http://localhost:8000
+```
+
+启动前端：
 
 ```powershell
 pnpm --filter @meetmind/web dev
 ```
 
-浏览器服务默认运行在 `http://localhost:3927`。核心依赖通过 `pnpm infra:up` 一条命令启动：PostgreSQL/pgvector、Redis、MinIO。Compose 数据默认落在 `F:\MeetMind\storage\docker`，避免占用 C 盘 Docker 默认数据区；如需彻底迁移 Docker Desktop 自身镜像/缓存，仍要在 Docker Desktop 设置里把数据目录迁到 F 盘。
+前端默认地址：
 
-常用维护命令：
+```text
+http://localhost:3927
+```
+
+停止基础设施：
 
 ```powershell
 pnpm infra:down
-New-Item -ItemType Directory -Force storage\backups | Out-Null
-docker compose -f infra\docker-compose.yml exec -T postgres pg_dump -U meetmind meetmind | Set-Content -Encoding utf8 storage\backups\meetmind.sql
-docker compose -f infra\docker-compose.yml down
-Remove-Item -Recurse -Force storage\docker\postgres
-pnpm infra:up
-cd apps/api
-.\.venv\Scripts\python -m alembic upgrade head
 ```
 
-Phase 8 的 golden sample 位于 `samples\meetings\phase8-golden-sample.json`，后端集成测试会用它验证“上传 -> transcript/action/citation -> Q&A”的本地闭环。Provider 日志统一落在 `meetmind.provider` logger，包含 `provider`、`model`、`prompt_version`、`latency_ms`、`estimated_units`、`cost_estimate_usd` 和失败信息。成本估算可通过 `.env` 中的 `LLM_COST_PER_1K_CHARS_USD`、`EMBEDDING_COST_PER_1K_CHARS_USD`、`QA_COST_PER_1K_CHARS_USD` 配置。
+## 常用命令
 
----
+根目录：
 
-## 当前仓库状态
+```powershell
+pnpm infra:up
+pnpm infra:down
+pnpm lint
+pnpm typecheck
+pnpm test
+```
 
-当前仓库已完成 Phase 0-8，具备本地核心依赖启动、后端稳定性测试、provider telemetry 和基础部署说明。
+后端：
 
-已完成：
+```powershell
+cd apps/api
+.\.venv\Scripts\python -m pytest
+.\.venv\Scripts\python -m ruff check .
+.\.venv\Scripts\python -m alembic upgrade head
+.\.venv\Scripts\python -m uvicorn app.main:app --reload
+```
 
-- 前后端基础工程与 Docker Compose 核心依赖；
-- 后端领域模型、上传、转写、结构化、引用、Q&A；
-- 前端会议工作台、审阅流与行动项生命周期；
-- 本地测试、类型检查和阶段 tag 交付纪律。
+前端：
 
-下一步：
+```powershell
+pnpm --filter @meetmind/web dev
+pnpm --filter @meetmind/web test
+pnpm --filter @meetmind/web lint
+pnpm --filter @meetmind/web typecheck
+pnpm --filter @meetmind/web build
+```
 
-1. 手动验证会议工作台主要流程。
-2. 准备 v0.1 真实会议样例与外部 provider 配置。
-3. 按产品路线进入下一轮功能规划。
+## 测试
 
----
+推荐验证流程：
 
-## 最小成功标准
+```powershell
+cd apps/api
+.\.venv\Scripts\python -m pytest
+.\.venv\Scripts\python -m ruff check .
+cd ..\..
+pnpm --filter @meetmind/web test
+pnpm --filter @meetmind/web lint
+pnpm --filter @meetmind/web typecheck
+pnpm --filter @meetmind/web build
+```
 
-v0.1 只有达到下面标准，才算真正跑通：
+当前基线：
 
-- 上传一段真实会议音频后，系统能完成异步处理；
-- 用户能看到带时间戳的 transcript；
-- 系统能生成结构化 summary、decisions、risks、action items；
-- 每个 action item 和 decision 至少有一个 citation；
-- 点击 citation 能跳到 transcript 对应位置；
-- 用户能修改并确认 action item；
-- 用户能向当前会议提问，并得到带引用的回答；
-- 当证据不足时，Q&A 会拒绝编造。
+```text
+Backend: 70 tests passing
+Frontend: 38 tests passing
+```
+
+## 运维说明
+
+- Provider telemetry 使用 `meetmind.provider` logger。
+- Telemetry 记录 provider、model、prompt version、latency、estimated units、cost estimate 和失败信息。
+- 运维视图展示 provider readiness 和调用汇总。
+- 任务同步当前只暴露 adapter readiness，第三方系统深度集成默认未启用。
+- Docker Compose 数据默认保存在本项目的 `storage/docker` 下。
+
+## 安全说明
+
+- 不提交 `.env`、API key、凭证、私密录音、本地数据库或运行日志。
+- 运维界面不得展示原始 API key、token 或 webhook URL。
+- Provider telemetry 只记录元数据，不记录完整会议正文或敏感 prompt。
+- AI 输出应尽量绑定来源证据。
+
+## 当前状态
+
+MeetMind 当前已经具备本地产品可用形态，覆盖会议处理、审阅、行动项追踪、知识搜索和运维可见性。
+
+已知边界：
+
+- 真实 ASR 和 LLM 质量取决于 provider 配置和真实会议样例。
+- 企业级权限、SSO、审计和多租户治理尚未完整实现。
+- Jira、Linear、飞书、Slack 等外部任务系统尚未深度接入。
+- 生产级部署加固仍属于后续工作。
