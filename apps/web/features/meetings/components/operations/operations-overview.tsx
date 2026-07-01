@@ -25,18 +25,32 @@ export function OperationsOverview({
   error: string | null;
   onRefresh: () => void;
 }) {
-  if (loadState === "loading") {
-    return <PanelState label="正在读取运维状态..." variant="loading" />;
-  }
-
-  if (loadState === "error") {
-    return <PanelState label={error ?? "无法读取运维状态。"} tone="danger" />;
-  }
+  const providerRows = providerStatus?.providers ?? [];
+  const telemetryRows = telemetry?.summaries ?? [];
 
   return (
-    <section className="grid min-h-[calc(100vh-156px)] min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+    <section
+      className="grid min-h-[calc(100vh-156px)] min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]"
+      aria-label="运维状态面板"
+    >
+      {loadState === "loading" ? (
+        <div
+          data-operations-state="loading"
+          className="min-h-0 overflow-hidden rounded-lg border border-border bg-surface xl:col-span-2"
+        >
+          <PanelState label="正在读取运维状态..." variant="loading" />
+        </div>
+      ) : loadState === "error" ? (
+        <div
+          data-operations-state="error"
+          className="min-h-0 overflow-hidden rounded-lg border border-border bg-surface xl:col-span-2"
+        >
+          <PanelState label={error ?? "无法读取运维状态。"} tone="danger" />
+        </div>
+      ) : (
+        <>
+      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-subtle/70 p-4">
           <div>
             <div className="flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-brand-primary" aria-hidden="true" />
@@ -54,66 +68,89 @@ export function OperationsOverview({
         </div>
 
         <ScrollArea className="flex-1">
-          <div className="divide-y divide-border">
-            {(providerStatus?.providers ?? []).map((item) => (
-              <article key={item.capability} className="p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge
-                        label={item.configured ? "已配置" : "未配置"}
-                        tone={item.configured ? "success" : "warning"}
-                      />
-                      <span className="text-xs font-medium uppercase text-evidence">
-                        {item.capability}
-                      </span>
+          {providerRows.length === 0 ? (
+            <PanelState label="暂无 provider 配置状态。" />
+          ) : (
+            <>
+              <div className="hidden border-b border-border bg-surface px-4 py-2 text-xs font-medium uppercase text-text-muted lg:grid lg:grid-cols-[minmax(0,1.1fr)_140px_minmax(160px,0.8fr)_auto] lg:items-center">
+                <span>Provider</span>
+                <span>状态</span>
+                <span>模型</span>
+                <span className="text-right">能力</span>
+              </div>
+              <div className="divide-y divide-border">
+                {providerRows.map((item) => (
+                  <article
+                    key={item.capability}
+                    className="grid gap-3 p-4 hover:bg-surface-subtle/60 lg:grid-cols-[minmax(0,1.1fr)_140px_minmax(160px,0.8fr)_auto] lg:items-center"
+                  >
+                    <div className="min-w-0">
+                      <h2 className="break-words text-sm font-semibold text-text-primary">
+                        {item.provider}
+                      </h2>
+                      <p className="mt-1 break-words text-sm leading-6 text-text-secondary">
+                        {item.message}
+                      </p>
                     </div>
-                    <h2 className="mt-2 text-sm font-semibold text-text-primary">
-                      {item.provider}
-                    </h2>
-                    <p className="mt-1 text-sm text-text-secondary">
-                      {item.message}
-                    </p>
-                  </div>
-                  <span className="rounded-md border border-border bg-surface-subtle px-2 py-1 text-xs text-text-muted">
-                    {item.model ?? "无模型"}
-                  </span>
-                </div>
-              </article>
-            ))}
-          </div>
+                    <StatusBadge
+                      label={item.configured ? "已配置" : "未配置"}
+                      tone={item.configured ? "success" : "warning"}
+                    />
+                    <span className="w-fit break-words rounded-md border border-border bg-surface-subtle px-2 py-1 text-xs text-text-muted">
+                      {item.model ?? "无模型"}
+                    </span>
+                    <span className="break-words text-xs font-medium uppercase text-evidence lg:justify-self-end">
+                      {item.capability}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
         </ScrollArea>
       </div>
 
       <aside className="grid min-h-0 gap-4">
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="flex items-center gap-2 border-b border-border bg-surface-subtle/70 px-4 py-3">
             <Activity className="h-4 w-4 text-brand-primary" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-text-primary">调用观测</h2>
           </div>
           <div className="max-h-[42vh] overflow-auto">
-            {(telemetry?.summaries ?? []).length === 0 ? (
+            {telemetryRows.length === 0 ? (
               <PanelState label="暂无 provider 调用记录。" />
             ) : (
               <div className="divide-y divide-border">
-                {telemetry?.summaries.map((summary) => (
+                {telemetryRows.map((summary) => (
                   <article
                     key={`${summary.provider}-${summary.operation}-${summary.model}`}
                     className="p-4"
                   >
-                    <div className="text-xs font-medium text-evidence">
-                      {summary.provider} · {summary.operation}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-evidence">
+                          {summary.provider} · {summary.operation}
+                        </div>
+                        <p className="mt-1 break-words text-xs text-text-muted">
+                          {summary.model ?? "未记录模型"} ·{" "}
+                          {summary.prompt_version ?? "无 prompt 版本"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-text-muted">
-                      <span>调用：{summary.call_count}</span>
-                      <span>失败：{summary.failure_count}</span>
-                      <span>均耗时：{summary.average_latency_ms}ms</span>
-                      <span>估算成本：${summary.cost_estimate_usd}</span>
+                    <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs text-text-muted">
+                      <span className="rounded-md border border-border bg-surface-subtle px-2 py-1">
+                        调用 {summary.call_count}
+                      </span>
+                      <span className="rounded-md border border-border bg-surface-subtle px-2 py-1">
+                        失败 {summary.failure_count}
+                      </span>
+                      <span className="rounded-md border border-border bg-surface-subtle px-2 py-1">
+                        均耗时 {summary.average_latency_ms}ms
+                      </span>
+                      <span className="rounded-md border border-border bg-surface-subtle px-2 py-1">
+                        成本 ${summary.cost_estimate_usd}
+                      </span>
                     </div>
-                    <p className="mt-2 text-xs text-text-muted">
-                      {summary.model ?? "未记录模型"} ·{" "}
-                      {summary.prompt_version ?? "无 prompt 版本"}
-                    </p>
                   </article>
                 ))}
               </div>
@@ -121,32 +158,36 @@ export function OperationsOverview({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="flex items-center gap-2 border-b border-border bg-surface-subtle/70 px-4 py-3">
             <Cable className="h-4 w-4 text-brand-primary" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-text-primary">任务同步</h2>
           </div>
           {taskSyncStatus ? (
             <div className="p-4">
-              <StatusBadge
-                label={taskSyncStatus.configured ? "已配置" : "未配置"}
-                tone={taskSyncStatus.configured ? "success" : "warning"}
-              />
-              <h3 className="mt-3 text-sm font-semibold text-text-primary">
-                {taskSyncStatus.provider}
-              </h3>
-              <p className="mt-1 text-sm leading-6 text-text-secondary">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="break-words text-sm font-semibold text-text-primary">
+                  {taskSyncStatus.provider}
+                </h3>
+                <StatusBadge
+                  label={taskSyncStatus.configured ? "已配置" : "未配置"}
+                  tone={taskSyncStatus.configured ? "success" : "warning"}
+                />
+              </div>
+              <p className="mt-3 break-words text-sm leading-6 text-text-secondary">
                 {taskSyncStatus.message}
               </p>
-              <p className="mt-2 text-xs text-text-muted">
+              <div className="mt-3 rounded-md border border-border bg-surface-subtle px-3 py-2 text-xs text-text-muted">
                 推送能力：{taskSyncStatus.supports_push ? "可用" : "不可用"}
-              </p>
+              </div>
             </div>
           ) : (
             <PanelState label="暂无任务同步状态。" />
           )}
         </section>
       </aside>
+        </>
+      )}
     </section>
   );
 }

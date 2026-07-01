@@ -17,24 +17,24 @@ export function AppShell({
   onToggleSidebar: () => void;
 }) {
   return (
-    <div className="grid min-h-screen grid-rows-[64px_1fr] bg-page">
+    <div className="grid min-h-screen grid-rows-[64px_1fr] bg-page text-text-primary">
       <AppHeader
         onRefresh={onRefresh}
         onToggleSidebar={onToggleSidebar}
       />
-      <div className="grid min-h-0 md:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="grid min-h-[calc(100vh-64px)] md:grid-cols-[304px_minmax(0,1fr)]">
         {/* Mobile: overlay sidebar when open; Desktop: always visible */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/30 md:hidden"
+            className="fixed inset-0 z-30 bg-black/35 backdrop-blur-[1px] md:hidden"
             onClick={onToggleSidebar}
             aria-hidden="true"
           />
         )}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-40 w-[280px] translate-x-0 transition-transform duration-200
-            md:static md:z-auto md:translate-x-0 md:transition-none
+            fixed inset-y-0 left-0 z-40 w-[304px] max-w-[calc(100vw-2rem)] bg-surface shadow-xl md:shadow-none transition-transform duration-200 ease-out
+            md:static md:z-auto md:w-auto md:max-w-none md:translate-x-0 md:bg-transparent md:transition-none
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
           `}
         >
@@ -43,7 +43,7 @@ export function AppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 overflow-hidden p-4 md:p-5 xl:p-6"
+          className="min-w-0 overflow-hidden px-4 py-4 md:px-5 md:py-5 xl:px-6 xl:py-6"
         >
           {children}
         </main>

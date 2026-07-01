@@ -26,7 +26,7 @@ export function QAPanel({
 }) {
   return (
     <section className="flex min-h-0 flex-col">
-      <div className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
+      <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-surface/90">
         <div>
           <div className="flex items-center gap-2">
             <MessageSquareText className="h-4 w-4 text-brand-primary" aria-hidden="true" />
@@ -38,7 +38,7 @@ export function QAPanel({
           基于当前会议
         </span>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
         <QAInput
           question={qaQuestion}
           qaState={qaState}

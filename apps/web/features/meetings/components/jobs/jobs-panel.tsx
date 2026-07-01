@@ -22,7 +22,7 @@ export function JobsPanel({
 
   return (
     <section className="flex min-h-0 flex-col">
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-4">
+      <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-surface/90">
         <div>
           <div className="flex items-center gap-2">
             <Activity className="h-4 w-4 text-brand-primary" aria-hidden="true" />
@@ -39,7 +39,7 @@ export function JobsPanel({
         )}
       </div>
       <ScrollArea className="flex-1">
-        <div className="space-y-3 p-3">
+        <div className="space-y-3 p-4">
           {jobMessage ? <StatusNote message={jobMessage} state={jobState} /> : null}
           {jobs.length === 0 ? (
             <p className="rounded-md border border-dashed border-border bg-surface px-3 py-3 text-sm leading-6 text-text-muted">

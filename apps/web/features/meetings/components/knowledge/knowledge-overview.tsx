@@ -34,16 +34,19 @@ export function KnowledgeOverview({
   onOpenMeeting: (meetingId: string) => void;
 }) {
   return (
-    <section className="grid min-h-[calc(100vh-156px)] min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-        <div className="border-b border-border p-4">
+    <section className="grid min-h-[calc(100vh-156px)] min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+      <div
+        className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface"
+        aria-label="知识库搜索和结果"
+      >
+        <div className="border-b border-border bg-surface-subtle/70 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-xl font-semibold tracking-normal text-text-primary">
-                知识库
+                知识库搜索
               </h1>
               <p className="mt-1 text-sm text-text-muted">
-                当前工作区：{workspaceId}
+                当前工作区：{workspaceId} · 搜索历史会议、决策和行动项
               </p>
             </div>
           </div>
@@ -77,28 +80,33 @@ export function KnowledgeOverview({
           <ScrollArea className="flex-1">
             <div className="divide-y divide-border">
               {searchResults.map((result) => (
-                <article key={`${result.source_type}-${result.source_id}`} className="p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium text-evidence">
-                        {result.meeting_title} · {sourceTypeLabel(result.source_type)}
-                      </div>
-                      <h2 className="mt-1 text-sm font-semibold text-text-primary">
-                        {result.title}
-                      </h2>
-                      <p className="mt-1 text-sm leading-6 text-text-secondary">
-                        {result.snippet}
-                      </p>
+                <article
+                  key={`${result.source_type}-${result.source_id}`}
+                  className="grid gap-3 p-4 hover:bg-surface-subtle/60 md:grid-cols-[minmax(0,1fr)_auto]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="font-medium text-evidence">
+                        {sourceTypeLabel(result.source_type)}
+                      </span>
+                      <span className="text-text-muted">来自 {result.meeting_title}</span>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onOpenMeeting(result.meeting_id)}
-                    >
-                      打开来源
-                    </Button>
+                    <h2 className="mt-1 break-words text-sm font-semibold leading-6 text-text-primary">
+                      {result.title}
+                    </h2>
+                    <p className="mt-1 break-words text-sm leading-6 text-text-secondary">
+                      {result.snippet}
+                    </p>
                   </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="self-start justify-self-start md:justify-self-end"
+                    onClick={() => onOpenMeeting(result.meeting_id)}
+                  >
+                    打开来源
+                  </Button>
                 </article>
               ))}
             </div>
@@ -106,9 +114,9 @@ export function KnowledgeOverview({
         )}
       </div>
 
-      <aside className="grid min-h-0 gap-4">
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <aside className="grid min-h-0 gap-4" aria-label="知识库辅助信息">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface-subtle/70">
+          <div className="flex items-center gap-2 border-b border-border bg-surface/80 px-4 py-3">
             <Workflow className="h-4 w-4 text-brand-primary" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-text-primary">历史决策</h2>
           </div>
@@ -122,10 +130,10 @@ export function KnowledgeOverview({
                     <div className="text-xs font-medium text-evidence">
                       {decision.meeting_title}
                     </div>
-                    <h3 className="mt-1 text-sm font-semibold text-text-primary">
+                    <h3 className="mt-1 break-words text-sm font-semibold text-text-primary">
                       {decision.title}
                     </h3>
-                    <p className="mt-1 text-sm leading-6 text-text-secondary">
+                    <p className="mt-1 break-words text-sm leading-6 text-text-secondary">
                       {decision.body}
                     </p>
                     <Button
@@ -144,8 +152,8 @@ export function KnowledgeOverview({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <section className="overflow-hidden rounded-lg border border-border bg-surface-subtle/70">
+          <div className="flex items-center gap-2 border-b border-border bg-surface/80 px-4 py-3">
             <Split className="h-4 w-4 text-brand-primary" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-text-primary">可能重复行动项</h2>
           </div>
@@ -164,10 +172,10 @@ export function KnowledgeOverview({
                         <button
                           key={item.id}
                           type="button"
-                          className="block w-full rounded-md border border-border bg-surface-subtle px-3 py-2 text-left text-sm hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                          className="block w-full rounded-md border border-border bg-surface px-3 py-2 text-left text-sm hover:bg-evidence-soft focus:outline-none focus:ring-2 focus:ring-ring"
                           onClick={() => item.meeting_id && onOpenMeeting(item.meeting_id)}
                         >
-                          <div className="font-medium text-text-primary">
+                          <div className="break-words font-medium text-text-primary">
                             {item.description}
                           </div>
                           <div className="mt-0.5 text-xs text-text-muted">

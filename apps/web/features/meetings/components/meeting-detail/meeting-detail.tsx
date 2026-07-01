@@ -74,7 +74,7 @@ export function MeetingDetail({
 }) {
   if (!selectedMeeting) {
     return (
-      <section className="flex items-center justify-center rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <section className="flex min-h-[calc(100vh-144px)] items-center justify-center rounded-lg border border-border bg-surface p-6 shadow-sm">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
           <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-brand-border bg-brand-soft">
             <FileAudio className="h-8 w-8 text-brand-primary" />
@@ -106,7 +106,10 @@ export function MeetingDetail({
   }
 
   return (
-    <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+    <section
+      data-workspace-region="evidence-review"
+      className="flex min-h-[calc(100vh-144px)] min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm ring-1 ring-border/40"
+    >
       <MeetingHeader
         selectedMeeting={selectedMeeting}
         detail={detail}
@@ -131,9 +134,12 @@ export function MeetingDetail({
             onSectionClick={onSectionClick}
           />
 
-          <section className="flex min-h-0 min-w-0 flex-col border-t border-border bg-surface-subtle lg:border-t-0 lg:border-l">
+          <section
+            aria-label="审阅辅助区"
+            className="flex min-h-0 min-w-0 flex-col border-t border-border bg-surface-subtle/70 lg:border-t-0 lg:border-l"
+          >
             <Tabs defaultValue="insights" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="grid w-full shrink-0 grid-cols-3 rounded-none border-b border-border bg-surface px-2">
+              <TabsList className="sticky top-0 z-10 grid h-12 w-full shrink-0 grid-cols-3 rounded-none border-b border-border bg-surface px-2">
                 <TabsTrigger value="insights" className="gap-1.5">
                   <Lightbulb className="h-4 w-4" />
                   任务

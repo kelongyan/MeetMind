@@ -50,8 +50,11 @@ export function ActionItemsOverview({
     "全部状态";
 
   return (
-    <section className="flex min-h-[calc(100vh-112px)] min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+    <section
+      className="flex min-h-[calc(100vh-112px)] min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-surface"
+      aria-label="行动项管理"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-subtle/70 p-4">
         <div>
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-brand-primary" aria-hidden="true" />
@@ -93,43 +96,64 @@ export function ActionItemsOverview({
         <PanelState label="暂无匹配的行动项。" />
       ) : (
         <ScrollArea className="flex-1">
+          <div className="hidden border-b border-border bg-surface px-4 py-2 text-xs font-medium uppercase text-text-muted md:grid md:grid-cols-[minmax(0,1.4fr)_160px_160px_auto] md:items-center">
+            <span>行动项</span>
+            <span>负责人</span>
+            <span>截止时间</span>
+            <span className="text-right">来源</span>
+          </div>
           <div className="divide-y divide-border">
             {actionItems.map((item) => {
               const meeting = item.meeting_id
                 ? meetingsById.get(item.meeting_id)
                 : undefined;
               return (
-                <article key={item.id} className="grid gap-3 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge
-                          label={actionStatusLabel(item.status)}
-                          tone={actionStatusTone(item.status)}
-                        />
-                        <span className="text-xs text-text-muted">
-                          {meeting?.title ?? "未知会议"}
-                        </span>
-                      </div>
-                      <h2 className="mt-2 text-sm font-semibold leading-6 text-text-primary">
-                        {item.description}
-                      </h2>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
-                        <span>负责人：{item.owner_text || "未指定"}</span>
-                        <span>截止：{item.due_text || item.due_date || "未设置"}</span>
-                      </div>
+                <article
+                  key={item.id}
+                  data-action-row
+                  className="grid gap-3 p-4 hover:bg-surface-subtle/60 md:grid-cols-[minmax(0,1.4fr)_160px_160px_auto] md:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge
+                        label={actionStatusLabel(item.status)}
+                        tone={actionStatusTone(item.status)}
+                      />
+                      <span className="text-xs text-text-muted">
+                        {meeting?.title ?? "未知会议"}
+                      </span>
                     </div>
-                    {item.meeting_id ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        type="button"
-                        onClick={() => onOpenMeeting(item.meeting_id as string)}
-                      >
-                        打开来源
-                      </Button>
-                    ) : null}
+                    <h2 className="mt-2 break-words text-sm font-semibold leading-6 text-text-primary">
+                      {item.description}
+                    </h2>
                   </div>
+                  <div className="break-words text-xs text-text-muted md:text-sm md:text-text-secondary">
+                    <span className="mr-1 font-medium text-text-primary md:hidden">
+                      负责人：
+                    </span>
+                    {item.owner_text || "未指定"}
+                  </div>
+                  <div className="break-words text-xs tabular-nums text-text-muted md:text-sm md:text-text-secondary">
+                    <span className="mr-1 font-medium text-text-primary md:hidden">
+                      截止：
+                    </span>
+                    {item.due_text || item.due_date || "未设置"}
+                  </div>
+                  {item.meeting_id ? (
+                    <Button
+                      className="justify-self-start md:justify-self-end"
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => onOpenMeeting(item.meeting_id as string)}
+                    >
+                      打开来源
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-text-muted md:justify-self-end">
+                      无来源
+                    </span>
+                  )}
                 </article>
               );
             })}

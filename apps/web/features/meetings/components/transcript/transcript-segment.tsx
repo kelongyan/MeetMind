@@ -34,25 +34,26 @@ export function TranscriptSegmentItem({
   return (
     <article
       className={cn(
-        "grid grid-cols-[88px_minmax(0,1fr)] gap-4 rounded-md border border-transparent px-2 py-3 outline-none transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
+        "grid grid-cols-[96px_minmax(0,1fr)] gap-4 rounded-md border border-transparent px-2 py-3 outline-none transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
         highlighted
           ? "border-evidence-border bg-evidence-soft"
           : "hover:border-border hover:bg-surface-subtle",
         pulsed
-          ? "ring-2 ring-evidence/25 shadow-[0_0_0_4px_rgba(8,145,178,0.10)]"
+          ? "ring-2 ring-evidence/25 shadow-[0_0_0_4px_var(--color-evidence-soft)]"
           : "",
       )}
+      data-timeline-segment
       data-evidence-active={highlighted ? "true" : "false"}
       data-evidence-pulse={pulsed ? "true" : "false"}
       id={segmentDomId(segment.id)}
       tabIndex={-1}
     >
       <div className="flex flex-col items-start gap-2 border-l-2 border-l-transparent pl-3">
-        <time className="font-mono text-xs font-semibold text-evidence">
+        <time className="font-mono text-xs font-semibold tabular-nums text-evidence">
           {formatTimestamp(segment.start_ms)}
         </time>
         <span
-          className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-text-muted"
+          className="rounded-md bg-surface-subtle px-2 py-0.5 text-xs font-medium text-text-muted"
           title={segment.speaker_id ?? undefined}
         >
           {voiceLabel}
@@ -72,7 +73,7 @@ export function TranscriptSegmentItem({
             需核对
           </span>
         ) : null}
-        <p className="text-sm leading-6 text-text-primary">{segment.text}</p>
+        <p className="break-words text-sm leading-6 text-text-primary">{segment.text}</p>
       </div>
     </article>
   );

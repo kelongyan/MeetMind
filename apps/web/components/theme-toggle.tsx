@@ -15,7 +15,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="sm" disabled aria-label="切换主题">
+      <Button variant="outline" size="icon-sm" disabled aria-label="切换主题">
         <Sun className="h-4 w-4" aria-hidden="true" />
       </Button>
     );
@@ -24,7 +24,7 @@ export function ThemeToggle() {
   return (
     <Button
       variant="outline"
-      size="sm"
+      size="icon-sm"
       type="button"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}

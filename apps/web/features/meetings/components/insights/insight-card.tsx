@@ -27,9 +27,9 @@ export function InsightCard({
           {confidenceLabel(item.confidence)}
         </span>
       </div>
-      <h5 className="text-sm font-semibold leading-5 text-text-primary">{item.title}</h5>
+      <h5 className="break-words text-sm font-semibold leading-5 text-text-primary">{item.title}</h5>
       {item.body !== item.title ? (
-        <p className="mt-3 text-sm leading-6 text-text-secondary">{item.body}</p>
+        <p className="mt-3 break-words text-sm leading-6 text-text-secondary">{item.body}</p>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {item.citations.length === 0 ? (

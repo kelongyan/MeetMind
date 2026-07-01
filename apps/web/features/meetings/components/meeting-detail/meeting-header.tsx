@@ -16,7 +16,7 @@ export function MeetingHeader({
   const isPublished = selectedMeeting.status === "published";
 
   return (
-    <div className="border-b border-border bg-surface p-4">
+    <div data-panel="meeting-header" className="border-b border-border bg-surface px-5 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -32,15 +32,21 @@ export function MeetingHeader({
           </div>
         </div>
         <div className="flex flex-wrap items-start justify-end gap-3">
-          <div className="grid grid-cols-2 gap-2 text-right text-xs">
-            <div className="rounded-md border border-border bg-muted px-2 py-1">
-              <div className="font-semibold text-text-primary">
+          <div className="grid grid-cols-3 gap-2 text-right text-xs">
+            <div className="rounded-md border border-border bg-surface-subtle px-2 py-1">
+              <div className="font-semibold tabular-nums text-text-primary">
+                {detail?.transcriptSegments.length ?? 0}
+              </div>
+              <div className="text-text-muted">转写</div>
+            </div>
+            <div className="rounded-md border border-border bg-surface-subtle px-2 py-1">
+              <div className="font-semibold tabular-nums text-text-primary">
                 {detail?.assets.length ?? 0}
               </div>
               <div className="text-text-muted">资源</div>
             </div>
             <div className="rounded-md border border-evidence-border bg-evidence-soft px-2 py-1">
-              <div className="font-semibold text-evidence">
+              <div className="font-semibold tabular-nums text-evidence">
                 {detail?.citations.length ?? 0}
               </div>
               <div className="text-evidence">证据</div>

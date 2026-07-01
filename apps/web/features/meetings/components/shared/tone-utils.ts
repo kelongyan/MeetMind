@@ -7,7 +7,7 @@ export function toneClassName(tone: StatusTone): string {
   if (tone === "warning") return "border-warning/25 bg-warning-soft text-warning";
   if (tone === "danger") return "border-danger/20 bg-danger-soft text-danger";
   if (tone === "info") return "border-brand-primary/20 bg-brand-soft text-brand-primary";
-  return "border-border bg-muted text-text-secondary";
+  return "border-border bg-surface-subtle text-text-secondary";
 }
 
 export function jobStatusTone(status: ProcessingJob["status"]): StatusTone {
@@ -39,7 +39,7 @@ export function reviewButtonToneClassName(tone: "neutral" | "success" | "danger"
   if (tone === "danger") {
     return "border-danger/20 bg-danger-soft text-danger hover:bg-danger-soft/80";
   }
-  return "border-border bg-surface text-text-secondary hover:bg-muted";
+  return "border-border bg-surface text-text-secondary hover:bg-surface-subtle";
 }
 
 export function toErrorMessage(error: unknown, fallback: string): string {

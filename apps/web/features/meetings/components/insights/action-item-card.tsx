@@ -40,7 +40,7 @@ export function ActionItemCard({
             {confidenceLabel(item.confidence)}
           </span>
         </div>
-        <h5 className="mt-2 text-sm font-semibold leading-6 text-text-primary">
+        <h5 className="mt-2 break-words text-sm font-semibold leading-6 text-text-primary">
           {item.title}
         </h5>
       </header>
@@ -105,7 +105,7 @@ function ActionMeta({
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         {label}
       </div>
-      <div className="mt-1 truncate text-sm font-medium text-text-primary">
+      <div className="mt-1 break-words text-sm font-medium text-text-primary">
         {value}
       </div>
     </div>

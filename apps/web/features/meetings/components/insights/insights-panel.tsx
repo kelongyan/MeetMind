@@ -25,7 +25,7 @@ export function InsightsPanel({
 
   return (
     <section className="flex min-h-0 flex-col">
-      <div className="flex h-14 items-center justify-between border-b border-border bg-surface px-4">
+      <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-surface/90">
         <div>
           <h3 className="text-sm font-semibold text-text-primary">审阅任务</h3>
           <p className="mt-0.5 text-xs text-text-muted">
@@ -41,7 +41,7 @@ export function InsightsPanel({
         )}
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-3">
+        <div className="p-4">
           {reviewMessage ? (
             <div className="mb-3">
               <StatusNote message={reviewMessage} state={reviewState} />

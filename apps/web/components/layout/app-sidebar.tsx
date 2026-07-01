@@ -73,13 +73,24 @@ export function AppSidebar({
   }, [uploadState, lastUploadJob]);
 
   return (
-    <aside className="h-full overflow-y-auto border-b border-border bg-surface md:border-b-0 md:border-r">
-      <div className="space-y-5 p-4">
-        <div className="rounded-lg border border-brand-border bg-brand-soft p-3">
-          <p className="text-sm font-semibold text-brand-primary">
-            单会议可信闭环
-          </p>
-          <p className="mt-1 text-xs leading-5 text-text-secondary">
+    <aside
+      aria-label="主导航和上传入口"
+      className="h-full overflow-y-auto border-b border-border bg-surface-subtle/70 md:border-b-0 md:border-r"
+    >
+      <div className="flex min-h-full flex-col gap-5 p-4">
+        <div className="rounded-lg border border-border bg-surface p-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-soft text-brand-primary">
+              <FileAudio className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-text-primary">
+                单会议可信闭环
+              </p>
+              <p className="mt-0.5 text-xs text-text-muted">Evidence Workbench</p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-text-secondary">
             上传、转写、提取行动项，并用引用回到原始发言。
           </p>
         </div>
@@ -97,15 +108,17 @@ export function AppSidebar({
           ))}
         </nav>
 
-        <div>
+        <div className="rounded-lg border border-border bg-surface p-3 shadow-sm">
           <button
             type="button"
-            className="flex w-full items-center justify-between border-t border-border pb-4 pt-5 text-left"
+            className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left transition-colors hover:bg-surface-subtle"
             onClick={() => setUploadExpanded((prev) => !prev)}
+            aria-expanded={uploadExpanded}
+            aria-controls="meeting-upload-form"
           >
             <span>
               <span className="block text-sm font-semibold text-text-primary">
-                新建会议
+                上传入口
               </span>
               <span className="mt-0.5 block text-xs text-text-muted">
                 支持音频、视频、转写文本和字幕
@@ -127,7 +140,11 @@ export function AppSidebar({
           </button>
 
           {uploadExpanded ? (
-            <form className="space-y-4" onSubmit={onSubmitUpload}>
+            <form
+              id="meeting-upload-form"
+              className="mt-3 space-y-4 border-t border-border pt-4"
+              onSubmit={onSubmitUpload}
+            >
               <div className="space-y-2">
                 <Label htmlFor="meeting-title" className="text-sm">
                   标题
@@ -187,7 +204,7 @@ export function AppSidebar({
               ) : null}
 
               {lastUploadJob ? (
-                <div className="rounded-md border border-brand-border bg-brand-soft p-3 text-xs text-brand-primary">
+                <div className="rounded-md border border-evidence-border bg-evidence-soft p-3 text-xs text-evidence">
                   <div className="font-semibold">
                     处理任务：{lastUploadJob.status}
                   </div>
@@ -221,10 +238,10 @@ function SidebarNavItem({
       role="tab"
       aria-selected={active}
       className={[
-        "flex h-10 w-full items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
+        "flex h-10 w-full items-center gap-2 rounded-md border-l-2 px-3 text-sm font-medium transition-colors",
         active
-          ? "bg-brand-soft text-brand-primary ring-1 ring-brand-border"
-          : "text-text-secondary hover:bg-muted hover:text-text-primary",
+          ? "border-l-2 border-brand-primary bg-surface text-brand-primary shadow-sm"
+          : "border-transparent text-text-secondary hover:bg-surface hover:text-text-primary",
       ].join(" ")}
       onClick={onClick}
     >

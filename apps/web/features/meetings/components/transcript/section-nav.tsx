@@ -16,12 +16,12 @@ export function SectionNav({
       className="border-b border-border bg-surface-subtle px-4 py-3"
     >
       <div className="mb-2 text-xs font-medium text-text-muted">章节导航</div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex snap-x gap-2 overflow-x-auto pb-1">
         {sections.map((section) => (
           <button
             key={section.id}
             type="button"
-            className="max-w-56 shrink-0 rounded-md border border-border bg-surface px-2.5 py-2 text-left text-xs hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+            className="max-w-56 shrink-0 snap-start rounded-md border border-border bg-surface px-2.5 py-2 text-left text-xs hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-ring"
             onClick={() => onSectionClick(section)}
           >
             <div className="truncate font-semibold text-text-primary">

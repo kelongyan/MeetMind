@@ -374,7 +374,7 @@ export function MeetingWorkbench() {
       sidebarOpen={sidebarOpen}
       onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
     >
-      <div className="space-y-4">
+      <div className="flex min-h-0 flex-col gap-4">
         <div
           className="flex flex-wrap items-center gap-2"
           role="tablist"
@@ -469,8 +469,11 @@ export function MeetingWorkbench() {
             onRefresh={() => void loadActionItems(actionStatusFilter)}
           />
         ) : (
-          <div className="grid min-h-[calc(100vh-156px)] gap-4 lg:grid-cols-[360px_minmax(0,1fr)] xl:gap-5">
-            <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+          <section
+            aria-label="会议工作台视图"
+            className="grid min-h-[calc(100vh-144px)] gap-4 lg:grid-cols-[360px_minmax(0,1fr)] xl:gap-5"
+          >
+            <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm ring-1 ring-border/40">
               <div className="border-b border-border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -504,13 +507,15 @@ export function MeetingWorkbench() {
                 </div>
               </div>
 
-              <MeetingList
-                meetings={visibleMeetings}
-                selectedMeetingId={selectedMeetingId}
-                listState={listState}
-                listError={listError}
-                onSelectMeeting={setSelectedMeetingId}
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <MeetingList
+                  meetings={visibleMeetings}
+                  selectedMeetingId={selectedMeetingId}
+                  listState={listState}
+                  listError={listError}
+                  onSelectMeeting={setSelectedMeetingId}
+                />
+              </div>
             </section>
 
             <MeetingDetail
@@ -539,7 +544,7 @@ export function MeetingWorkbench() {
               onUpdateInsight={handleUpdateInsight}
               onPublishMeeting={handlePublishMeeting}
             />
-          </div>
+          </section>
         )}
       </div>
     </AppShell>
