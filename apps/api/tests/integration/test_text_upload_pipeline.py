@@ -86,6 +86,45 @@ def test_text_upload_imports_transcript_and_runs_structuring() -> None:
     assert body["citations"][0]["quote"] == transcript[0]["text"]
 
 
+def test_text_upload_can_auto_run_structuring_pipeline() -> None:
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Auto text import", "language": "en"}
+    ).json()["id"]
+    app.dependency_overrides[get_llm_extractor] = (
+        lambda: UploadedTranscriptExtractor()
+    )
+
+    try:
+        upload_response = client.post(
+            f"/api/meetings/{meeting_id}/assets?auto_process=true",
+            files={
+                "file": (
+                    "rollout.txt",
+                    b"Nina owns the rollout checklist before Friday.",
+                    "text/plain",
+                )
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert upload_response.status_code == 201
+    body = upload_response.json()
+    assert body["job"]["job_type"] == "structure"
+    assert body["job"]["status"] == "succeeded"
+
+    meeting_response = client.get(f"/api/meetings/{meeting_id}")
+    action_items_response = client.get(f"/api/meetings/{meeting_id}/action-items")
+    citations_response = client.get(f"/api/meetings/{meeting_id}/citations")
+
+    assert meeting_response.json()["status"] == "ready_for_review"
+    assert action_items_response.json()[0]["owner_text"] == "Nina"
+    assert citations_response.json()[0]["quote"] == (
+        "Nina owns the rollout checklist before Friday."
+    )
+
+
 def test_vtt_upload_imports_timed_transcript_segments() -> None:
     client = TestClient(app)
     meeting_id = client.post(

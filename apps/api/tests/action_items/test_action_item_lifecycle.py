@@ -89,6 +89,32 @@ def test_canceled_action_item_is_not_indexed_as_qa_action_source() -> None:
     assert EmbeddingSourceType.ACTION_ITEM not in result.source_counts
 
 
+def test_list_global_action_items_can_filter_by_status() -> None:
+    client = TestClient(app)
+    first_meeting_id, _first_segment_id, first_action_id = (
+        _create_meeting_action_with_citation(client)
+    )
+    second_meeting_id, _second_segment_id, second_action_id = (
+        _create_meeting_action_with_citation(client)
+    )
+    client.patch(
+        f"/api/meetings/{first_meeting_id}/action-items/{first_action_id}",
+        json={"status": "confirmed", "confirmed_by_user_id": "user-1"},
+    )
+    client.patch(
+        f"/api/meetings/{second_meeting_id}/action-items/{second_action_id}",
+        json={"status": "canceled"},
+    )
+
+    all_response = client.get("/api/action-items")
+    confirmed_response = client.get("/api/action-items?status=confirmed")
+
+    assert all_response.status_code == 200
+    assert len(all_response.json()) == 2
+    assert confirmed_response.status_code == 200
+    assert [item["id"] for item in confirmed_response.json()] == [first_action_id]
+
+
 def _create_meeting_action_with_citation(client: TestClient) -> tuple[str, str, str]:
     meeting_id = client.post(
         "/api/meetings", json={"title": "Lifecycle review", "language": "en"}

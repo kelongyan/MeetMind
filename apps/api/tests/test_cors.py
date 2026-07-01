@@ -9,10 +9,10 @@ def test_local_web_origin_can_call_api() -> None:
     response = client.options(
         "/api/meetings",
         headers={
-            "Origin": "http://localhost:3000",
+            "Origin": "http://localhost:3927",
             "Access-Control-Request-Method": "GET",
         },
     )
 
     assert response.status_code == 200
-    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3927"

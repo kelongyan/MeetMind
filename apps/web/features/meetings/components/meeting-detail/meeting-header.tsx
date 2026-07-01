@@ -1,15 +1,19 @@
 import { formatDateTime, formatDuration, getMeetingStatusMeta } from "../../view-model";
 import type { Meeting, MeetingDetailData } from "../../types";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "../shared/status-badge";
 
 export function MeetingHeader({
   selectedMeeting,
   detail,
+  onPublishMeeting,
 }: {
   selectedMeeting: Meeting;
   detail: MeetingDetailData | null;
+  onPublishMeeting: () => void;
 }) {
   const status = getMeetingStatusMeta(selectedMeeting.status);
+  const isPublished = selectedMeeting.status === "published";
 
   return (
     <div className="border-b border-border bg-surface p-4">
@@ -27,15 +31,29 @@ export function MeetingHeader({
             <span>更新于 {formatDateTime(selectedMeeting.updated_at)}</span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-right text-xs">
-          <div className="rounded-md border border-border bg-muted px-2 py-1">
-            <div className="font-semibold text-text-primary">{detail?.assets.length ?? 0}</div>
-            <div className="text-text-muted">资源</div>
+        <div className="flex flex-wrap items-start justify-end gap-3">
+          <div className="grid grid-cols-2 gap-2 text-right text-xs">
+            <div className="rounded-md border border-border bg-muted px-2 py-1">
+              <div className="font-semibold text-text-primary">
+                {detail?.assets.length ?? 0}
+              </div>
+              <div className="text-text-muted">资源</div>
+            </div>
+            <div className="rounded-md border border-evidence-border bg-evidence-soft px-2 py-1">
+              <div className="font-semibold text-evidence">
+                {detail?.citations.length ?? 0}
+              </div>
+              <div className="text-evidence">证据</div>
+            </div>
           </div>
-          <div className="rounded-md border border-evidence-border bg-evidence-soft px-2 py-1">
-            <div className="font-semibold text-evidence">{detail?.citations.length ?? 0}</div>
-            <div className="text-evidence">证据</div>
-          </div>
+          <Button
+            size="sm"
+            disabled={isPublished}
+            onClick={onPublishMeeting}
+            variant={isPublished ? "outline" : "default"}
+          >
+            {isPublished ? "已发布" : "发布"}
+          </Button>
         </div>
       </div>
     </div>

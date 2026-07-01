@@ -1,19 +1,24 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { TranscriptSegment } from "../../types";
+import type { MeetingSection, TranscriptSegment } from "../../types";
 import { PanelState } from "../shared/panel-state";
+import { SectionNav } from "./section-nav";
 import { TranscriptSegmentItem } from "./transcript-segment";
 
 export function TranscriptPanel({
   segments,
+  sections,
   highlightedSegmentId,
   pulsedSegmentId,
   isLoading,
+  onSectionClick,
 }: {
   segments: TranscriptSegment[];
+  sections: MeetingSection[];
   highlightedSegmentId: string | null;
   pulsedSegmentId: string | null;
   isLoading: boolean;
+  onSectionClick: (section: MeetingSection) => void;
 }) {
   return (
     <section className="flex min-h-0 min-w-0 flex-col">
@@ -32,18 +37,21 @@ export function TranscriptPanel({
       ) : segments.length === 0 ? (
         <PanelState label="暂无转写记录。" />
       ) : (
-        <ScrollArea className="flex-1">
-          <div className="space-y-1 p-4 pb-6">
-            {segments.map((segment) => (
-              <TranscriptSegmentItem
-                key={segment.id}
-                segment={segment}
-                highlighted={highlightedSegmentId === segment.id}
-                pulsed={pulsedSegmentId === segment.id}
-              />
-            ))}
-          </div>
-        </ScrollArea>
+        <>
+          <SectionNav sections={sections} onSectionClick={onSectionClick} />
+          <ScrollArea className="flex-1">
+            <div className="space-y-1 p-4 pb-6">
+              {segments.map((segment) => (
+                <TranscriptSegmentItem
+                  key={segment.id}
+                  segment={segment}
+                  highlighted={highlightedSegmentId === segment.id}
+                  pulsed={pulsedSegmentId === segment.id}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+        </>
       )}
     </section>
   );

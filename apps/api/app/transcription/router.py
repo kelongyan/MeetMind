@@ -8,6 +8,7 @@ from app.providers.asr.base import Transcriber
 from app.providers.asr.dependencies import get_transcriber
 from app.transcription import service
 from app.transcription.schemas import (
+    MeetingSectionRead,
     TranscriptionRunRead,
     TranscriptSegmentCreate,
     TranscriptSegmentRead,
@@ -37,6 +38,16 @@ def list_transcript_segments(
     meeting_id: UUID, session: Session = Depends(get_db_session)
 ) -> list[TranscriptSegmentRead]:
     return service.list_segments(session, meeting_id)
+
+
+@router.get(
+    "/api/meetings/{meeting_id}/sections",
+    response_model=list[MeetingSectionRead],
+)
+def list_meeting_sections(
+    meeting_id: UUID, session: Session = Depends(get_db_session)
+) -> list[MeetingSectionRead]:
+    return service.list_sections(session, meeting_id)
 
 
 @router.post("/api/jobs/{job_id}/run", response_model=TranscriptionRunRead)

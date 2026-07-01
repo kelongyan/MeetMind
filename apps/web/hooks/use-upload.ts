@@ -40,11 +40,13 @@ export function useUpload(
         });
         let job: ProcessingJob | null = null;
         if (file) {
-          const upload = await api.uploadAsset(meeting.id, file);
+          const upload = await api.uploadAsset(meeting.id, file, {
+            autoProcess: true,
+          });
           job = upload.job;
           const msg = upload.duplicate
             ? "文件已存在，已打开对应会议。"
-            : "文件已上传，处理任务已排队。";
+            : "文件已上传，系统已开始自动处理。";
           setUploadMessage(msg);
           toast.success(msg);
         } else {

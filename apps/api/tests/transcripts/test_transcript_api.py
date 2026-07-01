@@ -104,3 +104,31 @@ def test_create_transcript_rejects_speaker_from_another_meeting() -> None:
 
     assert response.status_code == 409
     assert "speaker" in response.json()["detail"].casefold()
+
+
+def test_list_sections_builds_basic_transcript_navigation() -> None:
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Section navigation"}
+    ).json()["id"]
+    for index in range(6):
+        client.post(
+            f"/api/meetings/{meeting_id}/transcript",
+            json={
+                "start_ms": index * 1000,
+                "end_ms": index * 1000 + 800,
+                "text": f"Topic {index} discussion details.",
+            },
+        )
+
+    response = client.get(f"/api/meetings/{meeting_id}/sections")
+
+    assert response.status_code == 200
+    sections = response.json()
+    assert len(sections) == 2
+    assert sections[0]["title"] == "Topic 0 discussion details."
+    assert sections[0]["start_ms"] == 0
+    assert sections[0]["end_ms"] == 4800
+    assert sections[0]["topic_tags"] == ["auto"]
+    assert sections[1]["title"] == "Topic 5 discussion details."
+    assert sections[1]["start_ms"] == 5000

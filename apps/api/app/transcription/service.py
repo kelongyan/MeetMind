@@ -12,6 +12,7 @@ from app.db.models import (
     JobStatus,
     JobType,
     MeetingAsset,
+    MeetingSection,
     MeetingStatus,
     ProcessingJob,
     TranscriptSegment,
@@ -43,6 +44,7 @@ def create_segment(
     segment = TranscriptSegment(meeting_id=meeting_id, **payload.model_dump())
     repository.create_segment(session, segment)
     delete_embeddings_for_meeting(session, meeting_id)
+    repository.delete_sections_for_meeting(session, meeting_id)
     session.commit()
     session.refresh(segment)
     return segment
@@ -51,6 +53,25 @@ def create_segment(
 def list_segments(session: Session, meeting_id: UUID) -> list[TranscriptSegment]:
     get_meeting(session, meeting_id)
     return repository.list_segments(session, meeting_id)
+
+
+def list_sections(session: Session, meeting_id: UUID) -> list[MeetingSection]:
+    get_meeting(session, meeting_id)
+    sections = repository.list_sections(session, meeting_id)
+    if sections:
+        return sections
+
+    segments = repository.list_segments(session, meeting_id)
+    if not segments:
+        return []
+
+    sections = _build_basic_sections(meeting_id, segments)
+    for section in sections:
+        repository.create_section(session, section)
+    session.commit()
+    for section in sections:
+        session.refresh(section)
+    return sections
 
 
 def get_segment_for_meeting(
@@ -101,6 +122,7 @@ def run_transcription_job(
         normalized = processor.normalize_to_wav(source_path, work_dir)
         chunks = processor.slice_audio(normalized.path, work_dir / "chunks")
         repository.delete_segments_for_asset(session, asset.id)
+        repository.delete_sections_for_meeting(session, job.meeting_id)
         delete_embeddings_for_meeting(session, job.meeting_id)
         segments: list[TranscriptSegment] = []
 
@@ -173,3 +195,29 @@ def _ensure_speaker_belongs_to_meeting(
         raise NotFoundError("Speaker not found")
     if speaker.meeting_id != meeting_id:
         raise ConflictError("Speaker does not belong to this meeting")
+
+
+def _build_basic_sections(
+    meeting_id: UUID, segments: list[TranscriptSegment], *, group_size: int = 5
+) -> list[MeetingSection]:
+    sections: list[MeetingSection] = []
+    for index in range(0, len(segments), group_size):
+        group = segments[index : index + group_size]
+        sections.append(
+            MeetingSection(
+                meeting_id=meeting_id,
+                title=_section_title_from_text(group[0].text),
+                summary=None,
+                start_ms=group[0].start_ms,
+                end_ms=group[-1].end_ms,
+                topic_tags=["auto"],
+            )
+        )
+    return sections
+
+
+def _section_title_from_text(text: str) -> str:
+    normalized = " ".join(text.split())
+    if len(normalized) <= 48:
+        return normalized
+    return f"{normalized[:45]}..."

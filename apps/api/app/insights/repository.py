@@ -1,9 +1,16 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.db.models import ActionItem, Citation, InsightItem, MeetingSection, QAMessage
+from app.db.models import (
+    ActionItem,
+    ActionItemStatus,
+    Citation,
+    InsightItem,
+    MeetingSection,
+    QAMessage,
+)
 
 
 def create_insight(session: Session, insight: InsightItem) -> InsightItem:
@@ -34,6 +41,20 @@ def list_action_items(session: Session, meeting_id: UUID) -> list[ActionItem]:
             .order_by(ActionItem.created_at, ActionItem.id)
         )
     )
+
+
+def list_global_action_items(
+    session: Session,
+    *,
+    status: ActionItemStatus | None = None,
+    meeting_id: UUID | None = None,
+) -> list[ActionItem]:
+    query: Select[tuple[ActionItem]] = select(ActionItem)
+    if status is not None:
+        query = query.where(ActionItem.status == status)
+    if meeting_id is not None:
+        query = query.where(ActionItem.meeting_id == meeting_id)
+    return list(session.scalars(query.order_by(ActionItem.created_at, ActionItem.id)))
 
 
 def get_action_item(session: Session, action_item_id: UUID) -> ActionItem | None:

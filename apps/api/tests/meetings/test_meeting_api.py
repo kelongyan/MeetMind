@@ -77,3 +77,54 @@ def test_delete_meeting_removes_local_upload_files(upload_storage_dir: Path) -> 
     assert delete_response.status_code == 204
     assert not uploaded_path.exists()
     assert not (upload_storage_dir / meeting_id).exists()
+
+
+def test_publish_meeting_requires_citations_for_key_outputs() -> None:
+    client = TestClient(app)
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Publish readiness", "language": "en"}
+    ).json()["id"]
+    client.post(
+        f"/api/meetings/{meeting_id}/transcript",
+        json={
+            "start_ms": 0,
+            "end_ms": 3000,
+            "text": "Nina owns the launch checklist.",
+            "confidence": 0.95,
+        },
+    )
+    action = client.post(
+        f"/api/meetings/{meeting_id}/action-items",
+        json={
+            "description": "Prepare the launch checklist.",
+            "owner_text": "Nina",
+            "status": "confirmed",
+            "confirmed_by_user_id": "local-user",
+        },
+    ).json()
+
+    blocked_response = client.post(f"/api/meetings/{meeting_id}/publish")
+
+    assert blocked_response.status_code == 409
+    assert blocked_response.json()["detail"] == (
+        "Cannot publish meeting while key outputs are missing citations"
+    )
+
+    segment = client.get(f"/api/meetings/{meeting_id}/transcript").json()[0]
+    client.post(
+        f"/api/meetings/{meeting_id}/citations",
+        json={
+            "target_type": "action_item",
+            "target_id": action["id"],
+            "segment_id": segment["id"],
+            "start_ms": segment["start_ms"],
+            "end_ms": segment["end_ms"],
+            "quote": segment["text"],
+            "confidence": 0.91,
+        },
+    )
+
+    publish_response = client.post(f"/api/meetings/{meeting_id}/publish")
+
+    assert publish_response.status_code == 200
+    assert publish_response.json()["status"] == "published"

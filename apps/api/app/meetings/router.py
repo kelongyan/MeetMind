@@ -38,6 +38,13 @@ def update_meeting(
     return service.update_meeting(session, meeting_id, payload)
 
 
+@router.post("/{meeting_id}/publish", response_model=MeetingRead)
+def publish_meeting(
+    meeting_id: UUID, session: Session = Depends(get_db_session)
+) -> MeetingRead:
+    return service.publish_meeting(session, meeting_id)
+
+
 @router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_meeting(
     meeting_id: UUID, session: Session = Depends(get_db_session)

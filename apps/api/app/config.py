@@ -29,9 +29,11 @@ class Settings(BaseSettings):
     llm_cost_per_1k_chars_usd: float = 0.0
     embedding_cost_per_1k_chars_usd: float = 0.0
     qa_cost_per_1k_chars_usd: float = 0.0
+    task_sync_provider: str = "disabled"
+    task_sync_webhook_url: str | None = None
     cors_allowed_origins: list[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
+        "http://localhost:3927",
+        "http://127.0.0.1:3927",
     ]
 
     model_config = SettingsConfigDict(

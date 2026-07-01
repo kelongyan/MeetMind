@@ -3,7 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileAudio, Lightbulb, MessageSquareText, Activity } from "lucide-react";
 import type { FormEvent } from "react";
-import type { Citation, Meeting, MeetingDetailData, ProcessingJob, QAResponse } from "../../types";
+import type {
+  Citation,
+  Meeting,
+  MeetingDetailData,
+  MeetingSection,
+  ProcessingJob,
+  QAResponse,
+} from "../../types";
 import type { CitationChipView, InsightGroupView } from "../../view-model";
 import type { UpdateActionItemPayload, UpdateInsightPayload } from "../../api";
 import type { LoadState } from "../shared/load-state";
@@ -31,12 +38,14 @@ export function MeetingDetail({
   reviewState,
   reviewMessage,
   onCitationClick,
+  onSectionClick,
   onRunJob,
   onRetryJob,
   onQaQuestionChange,
   onSubmitQuestion,
   onUpdateActionItem,
   onUpdateInsight,
+  onPublishMeeting,
 }: {
   selectedMeeting: Meeting | null;
   detail: MeetingDetailData | null;
@@ -54,12 +63,14 @@ export function MeetingDetail({
   reviewState: LoadState;
   reviewMessage: string | null;
   onCitationClick: (citation: Citation | CitationChipView | { segmentId: string }) => void;
+  onSectionClick: (section: MeetingSection) => void;
   onRunJob: (job: ProcessingJob) => void;
   onRetryJob: (jobId: string) => void;
   onQaQuestionChange: (question: string) => void;
   onSubmitQuestion: (event: FormEvent<HTMLFormElement>) => void;
   onUpdateActionItem: (actionItemId: string, payload: UpdateActionItemPayload) => void;
   onUpdateInsight: (insightId: string, payload: UpdateInsightPayload) => void;
+  onPublishMeeting: () => void;
 }) {
   if (!selectedMeeting) {
     return (
@@ -96,7 +107,11 @@ export function MeetingDetail({
 
   return (
     <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
-      <MeetingHeader selectedMeeting={selectedMeeting} detail={detail} />
+      <MeetingHeader
+        selectedMeeting={selectedMeeting}
+        detail={detail}
+        onPublishMeeting={onPublishMeeting}
+      />
 
       {detailState === "error" ? (
         <PanelState
@@ -109,9 +124,11 @@ export function MeetingDetail({
         <div className="flex min-h-0 flex-1 min-w-0 flex-col lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(380px,0.95fr)]">
           <TranscriptPanel
             segments={detail.transcriptSegments}
+            sections={detail.sections}
             highlightedSegmentId={highlightedSegmentId}
             pulsedSegmentId={pulsedSegmentId}
             isLoading={false}
+            onSectionClick={onSectionClick}
           />
 
           <section className="flex min-h-0 min-w-0 flex-col border-t border-border bg-surface-subtle lg:border-t-0 lg:border-l">

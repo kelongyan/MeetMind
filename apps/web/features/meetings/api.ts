@@ -2,13 +2,21 @@ import type {
   ActionItem,
   AssetUploadResult,
   Citation,
+  DuplicateActionGroup,
   InsightItem,
   JobRunResult,
+  KnowledgeDecision,
+  KnowledgeSearchResult,
   Meeting,
   MeetingAsset,
   MeetingDetailData,
+  ProviderStatusList,
+  ProviderTelemetryList,
+  MeetingSection,
   ProcessingJob,
+  QAMessage,
   QAResponse,
+  TaskSyncStatus,
   TranscriptSegment,
 } from "./types";
 
@@ -56,16 +64,36 @@ export interface UpdateActionItemPayload {
   confirmed_by_user_id?: string | null;
 }
 
+export interface UploadAssetOptions {
+  autoProcess?: boolean;
+}
+
+export interface ListActionItemsOptions {
+  status?: ActionItem["status"];
+  meetingId?: string;
+}
+
+export interface SearchKnowledgePayload {
+  workspaceId: string;
+  query: string;
+}
+
 export interface MeetMindApi {
   listMeetings(): Promise<Meeting[]>;
   getMeeting(meetingId: string): Promise<Meeting>;
   createMeeting(payload: CreateMeetingPayload): Promise<Meeting>;
   listJobs(meetingId: string): Promise<ProcessingJob[]>;
   listAssets(meetingId: string): Promise<MeetingAsset[]>;
-  uploadAsset(meetingId: string, file: File): Promise<AssetUploadResult>;
+  uploadAsset(
+    meetingId: string,
+    file: File,
+    options?: UploadAssetOptions,
+  ): Promise<AssetUploadResult>;
+  publishMeeting(meetingId: string): Promise<Meeting>;
   runJob(job: ProcessingJob): Promise<JobRunResult>;
   retryJob(jobId: string): Promise<ProcessingJob>;
   listTranscript(meetingId: string): Promise<TranscriptSegment[]>;
+  listSections(meetingId: string): Promise<MeetingSection[]>;
   listInsights(meetingId: string): Promise<InsightItem[]>;
   updateInsight(
     meetingId: string,
@@ -73,6 +101,15 @@ export interface MeetMindApi {
     payload: UpdateInsightPayload,
   ): Promise<InsightItem>;
   listActionItems(meetingId: string): Promise<ActionItem[]>;
+  listGlobalActionItems(options?: ListActionItemsOptions): Promise<ActionItem[]>;
+  searchKnowledge(payload: SearchKnowledgePayload): Promise<KnowledgeSearchResult[]>;
+  listKnowledgeDecisions(workspaceId: string): Promise<KnowledgeDecision[]>;
+  listDuplicateActionCandidates(
+    workspaceId: string,
+  ): Promise<DuplicateActionGroup[]>;
+  getProviderStatus(): Promise<ProviderStatusList>;
+  getProviderTelemetry(): Promise<ProviderTelemetryList>;
+  getTaskSyncStatus(): Promise<TaskSyncStatus>;
   updateActionItem(
     meetingId: string,
     actionItemId: string,
@@ -83,6 +120,7 @@ export interface MeetMindApi {
     meetingId: string,
     payload: AskQuestionPayload,
   ): Promise<QAResponse>;
+  listQAMessages(meetingId: string, conversationId?: string): Promise<QAMessage[]>;
   loadMeetingDetail(meetingId: string): Promise<MeetingDetailData>;
 }
 
@@ -119,14 +157,22 @@ export function createMeetMindApi(
       requestJson<ProcessingJob[]>(`/api/meetings/${meetingId}/jobs`),
     listAssets: (meetingId) =>
       requestJson<MeetingAsset[]>(`/api/meetings/${meetingId}/assets`),
-    uploadAsset: (meetingId, file) => {
+    uploadAsset: (meetingId, file, options) => {
       const formData = new FormData();
       formData.append("file", file);
-      return requestJson<AssetUploadResult>(`/api/meetings/${meetingId}/assets`, {
-        method: "POST",
-        body: formData,
-      });
+      const query = options?.autoProcess ? "?auto_process=true" : "";
+      return requestJson<AssetUploadResult>(
+        `/api/meetings/${meetingId}/assets${query}`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
     },
+    publishMeeting: (meetingId) =>
+      requestJson<Meeting>(`/api/meetings/${meetingId}/publish`, {
+        method: "POST",
+      }),
     runJob: (job) => {
       if (job.job_type === "transcribe") {
         return requestJson<JobRunResult>(`/api/jobs/${job.id}/run`, {
@@ -146,6 +192,8 @@ export function createMeetMindApi(
       }),
     listTranscript: (meetingId) =>
       requestJson<TranscriptSegment[]>(`/api/meetings/${meetingId}/transcript`),
+    listSections: (meetingId) =>
+      requestJson<MeetingSection[]>(`/api/meetings/${meetingId}/sections`),
     listInsights: (meetingId) =>
       requestJson<InsightItem[]>(`/api/meetings/${meetingId}/insights`),
     updateInsight: (meetingId, insightId, payload) =>
@@ -161,6 +209,40 @@ export function createMeetMindApi(
       ),
     listActionItems: (meetingId) =>
       requestJson<ActionItem[]>(`/api/meetings/${meetingId}/action-items`),
+    listGlobalActionItems: (options) => {
+      const params = new URLSearchParams();
+      if (options?.status) params.set("status", options.status);
+      if (options?.meetingId) params.set("meeting_id", options.meetingId);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      return requestJson<ActionItem[]>(`/api/action-items${query}`);
+    },
+    searchKnowledge: (payload) => {
+      const params = new URLSearchParams({
+        workspace_id: payload.workspaceId,
+        query: payload.query,
+      });
+      return requestJson<KnowledgeSearchResult[]>(
+        `/api/knowledge/search?${params.toString()}`,
+      );
+    },
+    listKnowledgeDecisions: (workspaceId) => {
+      const params = new URLSearchParams({ workspace_id: workspaceId });
+      return requestJson<KnowledgeDecision[]>(
+        `/api/knowledge/decisions?${params.toString()}`,
+      );
+    },
+    listDuplicateActionCandidates: (workspaceId) => {
+      const params = new URLSearchParams({ workspace_id: workspaceId });
+      return requestJson<DuplicateActionGroup[]>(
+        `/api/knowledge/duplicate-actions?${params.toString()}`,
+      );
+    },
+    getProviderStatus: () =>
+      requestJson<ProviderStatusList>("/api/operations/provider-status"),
+    getProviderTelemetry: () =>
+      requestJson<ProviderTelemetryList>("/api/operations/provider-telemetry"),
+    getTaskSyncStatus: () =>
+      requestJson<TaskSyncStatus>("/api/operations/task-sync"),
     updateActionItem: (meetingId, actionItemId, payload) =>
       requestJson<ActionItem>(
         `/api/meetings/${meetingId}/action-items/${actionItemId}`,
@@ -182,12 +264,19 @@ export function createMeetMindApi(
         },
         body: JSON.stringify(payload),
       }),
+    listQAMessages: (meetingId, conversationId) => {
+      const query = conversationId
+        ? `?conversation_id=${encodeURIComponent(conversationId)}`
+        : "";
+      return requestJson<QAMessage[]>(`/api/meetings/${meetingId}/qa${query}`);
+    },
     async loadMeetingDetail(meetingId) {
       const [
         meeting,
         jobs,
         assets,
         transcriptSegments,
+        sections,
         insights,
         actionItems,
         citations,
@@ -196,6 +285,7 @@ export function createMeetMindApi(
         this.listJobs(meetingId),
         this.listAssets(meetingId),
         this.listTranscript(meetingId),
+        this.listSections(meetingId),
         this.listInsights(meetingId),
         this.listActionItems(meetingId),
         this.listCitations(meetingId),
@@ -205,6 +295,7 @@ export function createMeetMindApi(
         jobs,
         assets,
         transcriptSegments,
+        sections,
         insights,
         actionItems,
         citations,

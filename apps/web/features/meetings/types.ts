@@ -97,6 +97,17 @@ export interface TranscriptSegment {
   created_at?: string;
 }
 
+export interface MeetingSection {
+  id: string;
+  meeting_id: string;
+  title: string;
+  summary?: string | null;
+  start_ms?: number | null;
+  end_ms?: number | null;
+  topic_tags: string[];
+  created_at: string;
+}
+
 export interface InsightItem {
   id: string;
   meeting_id?: string;
@@ -163,6 +174,70 @@ export interface QAResponse {
   citations: Citation[];
 }
 
+export interface KnowledgeSearchResult {
+  meeting_id: string;
+  meeting_title: string;
+  source_type: string;
+  source_id: string;
+  segment_id?: string | null;
+  start_ms?: number | null;
+  end_ms?: number | null;
+  title: string;
+  snippet: string;
+  created_at: string;
+}
+
+export interface KnowledgeDecision {
+  id: string;
+  meeting_id: string;
+  meeting_title: string;
+  title: string;
+  body: string;
+  status: string;
+  confidence?: number | null;
+  created_at: string;
+  citations: Citation[];
+}
+
+export interface DuplicateActionGroup {
+  reason: string;
+  items: ActionItem[];
+}
+
+export interface ProviderStatus {
+  capability: string;
+  provider: string;
+  model?: string | null;
+  configured: boolean;
+  message: string;
+}
+
+export interface ProviderStatusList {
+  providers: ProviderStatus[];
+}
+
+export interface ProviderTelemetrySummary {
+  provider: string;
+  operation: string;
+  model?: string | null;
+  prompt_version?: string | null;
+  call_count: number;
+  failure_count: number;
+  average_latency_ms: number;
+  cost_estimate_usd: number;
+}
+
+export interface ProviderTelemetryList {
+  summaries: ProviderTelemetrySummary[];
+}
+
+export interface TaskSyncStatus {
+  provider: string;
+  configured: boolean;
+  supports_push: boolean;
+  message: string;
+}
+
 export interface JobRunResult {
   job: ProcessingJob;
   asset?: MeetingAsset;
@@ -177,6 +252,7 @@ export interface MeetingDetailData {
   jobs: ProcessingJob[];
   assets: MeetingAsset[];
   transcriptSegments: TranscriptSegment[];
+  sections: MeetingSection[];
   insights: InsightItem[];
   actionItems: ActionItem[];
   citations: Citation[];

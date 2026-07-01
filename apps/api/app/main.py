@@ -2,13 +2,16 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.action_items.router import router as action_items_router
 from app.assets.router import router as assets_router
 from app.config import settings
 from app.exceptions import ConflictError, InvalidFileTypeError, NotFoundError
 from app.insights.router import router as insights_router
 from app.jobs.router import router as jobs_router
+from app.knowledge.router import router as knowledge_router
 from app.meetings.router import router as meetings_router
 from app.observability.provider_telemetry import ProviderCallError
+from app.operations.router import router as operations_router
 from app.qa.router import router as qa_router
 from app.structuring.router import router as structuring_router
 from app.transcription.router import router as transcription_router
@@ -27,6 +30,9 @@ app.include_router(jobs_router)
 app.include_router(transcription_router)
 app.include_router(structuring_router)
 app.include_router(insights_router)
+app.include_router(action_items_router)
+app.include_router(knowledge_router)
+app.include_router(operations_router)
 app.include_router(qa_router)
 
 

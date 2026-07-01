@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Speaker, TranscriptSegment
+from app.db.models import MeetingSection, Speaker, TranscriptSegment
 
 
 def create_segment(session: Session, segment: TranscriptSegment) -> TranscriptSegment:
@@ -23,6 +23,27 @@ def list_segments(session: Session, meeting_id: UUID) -> list[TranscriptSegment]
 
 def get_segment(session: Session, segment_id: UUID) -> TranscriptSegment | None:
     return session.get(TranscriptSegment, segment_id)
+
+
+def create_section(session: Session, section: MeetingSection) -> MeetingSection:
+    session.add(section)
+    return section
+
+
+def list_sections(session: Session, meeting_id: UUID) -> list[MeetingSection]:
+    return list(
+        session.scalars(
+            select(MeetingSection)
+            .where(MeetingSection.meeting_id == meeting_id)
+            .order_by(MeetingSection.start_ms, MeetingSection.id)
+        )
+    )
+
+
+def delete_sections_for_meeting(session: Session, meeting_id: UUID) -> None:
+    session.execute(
+        delete(MeetingSection).where(MeetingSection.meeting_id == meeting_id)
+    )
 
 
 def get_speaker(session: Session, speaker_id: UUID) -> Speaker | None:

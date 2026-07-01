@@ -42,7 +42,8 @@ MeetMind 是一个面向会议场景的可信会议智能系统，目标是把�
 | 4 | [技术栈](./doc/03-technology-stack.md) | 技术选型、备选方案、暂不推荐路线 |
 | 5 | [开发计划](./doc/04-development-plan.md) | Phase 0-8、验收标准、阶段 tag |
 | 6 | [UI 设计](./doc/05-ui-design.md) | 正式工作台风格、白蓝灰视觉、页面与组件规范 |
-| 7 | [开发规则](./RULE.md) | Git、代码规范、低耦合、测试、安全、阶段交付纪律 |
+| 7 | [开发进展跟踪](./doc/06-progress-tracking.md) | 已完成、未完成、当前风险、整体进度 |
+| 8 | [开发规则](./RULE.md) | Git、代码规范、低耦合、测试、安全、阶段交付纪律 |
 
 ---
 
@@ -65,7 +66,7 @@ cd apps/api
 pnpm --filter @meetmind/web dev
 ```
 
-核心依赖通过 `pnpm infra:up` 一条命令启动：PostgreSQL/pgvector、Redis、MinIO。Compose 数据默认落在 `F:\MeetMind\storage\docker`，避免占用 C 盘 Docker 默认数据区；如需彻底迁移 Docker Desktop 自身镜像/缓存，仍要在 Docker Desktop 设置里把数据目录迁到 F 盘。
+浏览器服务默认运行在 `http://localhost:3927`。核心依赖通过 `pnpm infra:up` 一条命令启动：PostgreSQL/pgvector、Redis、MinIO。Compose 数据默认落在 `F:\MeetMind\storage\docker`，避免占用 C 盘 Docker 默认数据区；如需彻底迁移 Docker Desktop 自身镜像/缓存，仍要在 Docker Desktop 设置里把数据目录迁到 F 盘。
 
 常用维护命令：
 
