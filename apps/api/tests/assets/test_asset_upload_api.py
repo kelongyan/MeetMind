@@ -40,16 +40,19 @@ def upload_storage_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_upload_meeting_file_creates_asset_and_queued_job(
-    upload_storage_dir: Path,
+    upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "Upload"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Upload"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     content = b"Project kickoff transcript."
 
     response = client.post(
         f"/api/meetings/{meeting_id}/assets",
         files={"file": ("kickoff.txt", content, "text/plain")},
+        headers=auth_headers,
     )
 
     assert response.status_code == 201
@@ -71,39 +74,57 @@ def test_upload_meeting_file_creates_asset_and_queued_job(
     assert job["status"] == "queued"
     assert job["progress"] == 0
 
-    list_response = client.get(f"/api/meetings/{meeting_id}/assets")
+    list_response = client.get(
+        f"/api/meetings/{meeting_id}/assets", headers=auth_headers
+    )
     assert list_response.status_code == 200
-    assert [item["id"] for item in list_response.json()] == [asset["id"]]
+    assert [item["id"] for item in list_response.json()["items"]] == [asset["id"]]
 
 
-def test_upload_rejects_unsupported_file_type(upload_storage_dir: Path) -> None:
+def test_upload_rejects_unsupported_file_type(
+    upload_storage_dir: Path, auth_headers: dict[str, str]
+) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "Bad upload"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Bad upload"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
 
     response = client.post(
         f"/api/meetings/{meeting_id}/assets",
         files={"file": ("payload.exe", b"not allowed", "application/octet-stream")},
+        headers=auth_headers,
     )
 
     assert response.status_code == 415
     assert response.json()["detail"] == "Unsupported file type"
     assert not upload_storage_dir.exists()
-    assert client.get(f"/api/meetings/{meeting_id}/assets").json() == []
+    assert (
+        client.get(f"/api/meetings/{meeting_id}/assets", headers=auth_headers).json()[
+            "items"
+        ]
+        == []
+    )
 
 
 def test_duplicate_upload_reuses_existing_asset_without_new_job(
-    upload_storage_dir: Path,
+    upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "Duplicate"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Duplicate"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     files = {
         "file": ("notes.vtt", b"WEBVTT\n\n00:00.000 --> 00:01.000\nHi", "text/vtt")
     }
 
-    first_response = client.post(f"/api/meetings/{meeting_id}/assets", files=files)
-    second_response = client.post(f"/api/meetings/{meeting_id}/assets", files=files)
+    first_response = client.post(
+        f"/api/meetings/{meeting_id}/assets", files=files, headers=auth_headers
+    )
+    second_response = client.post(
+        f"/api/meetings/{meeting_id}/assets", files=files, headers=auth_headers
+    )
 
     assert first_response.status_code == 201
     assert second_response.status_code == 200
@@ -114,18 +135,20 @@ def test_duplicate_upload_reuses_existing_asset_without_new_job(
     assert second_body["job"] is None
     assert len(list((upload_storage_dir / meeting_id).iterdir())) == 1
 
-    assets_response = client.get(f"/api/meetings/{meeting_id}/assets")
-    assert [item["id"] for item in assets_response.json()] == [
+    assets_response = client.get(
+        f"/api/meetings/{meeting_id}/assets", headers=auth_headers
+    )
+    assert [item["id"] for item in assets_response.json()["items"]] == [
         first_body["asset"]["id"]
     ]
 
 
 def test_delete_transcript_asset_removes_imported_segments_and_embeddings(
-    upload_storage_dir: Path,
+    upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:
     client = TestClient(app)
     meeting_id = client.post(
-        "/api/meetings", json={"title": "Delete transcript asset"}
+        "/api/meetings", json={"title": "Delete transcript asset"}, headers=auth_headers
     ).json()["id"]
     upload_response = client.post(
         f"/api/meetings/{meeting_id}/assets",
@@ -136,6 +159,7 @@ def test_delete_transcript_asset_removes_imported_segments_and_embeddings(
                 "text/plain",
             )
         },
+        headers=auth_headers,
     )
     asset = upload_response.json()["asset"]
     embedder = KeywordEmbedder()
@@ -143,8 +167,10 @@ def test_delete_transcript_asset_removes_imported_segments_and_embeddings(
     with SessionLocal() as session:
         rebuild_meeting_embeddings(session, UUID(meeting_id), embedder=embedder)
 
-    delete_response = client.delete(f"/api/assets/{asset['id']}")
-    transcript_response = client.get(f"/api/meetings/{meeting_id}/transcript")
+    delete_response = client.delete(f"/api/assets/{asset['id']}", headers=auth_headers)
+    transcript_response = client.get(
+        f"/api/meetings/{meeting_id}/transcript", headers=auth_headers
+    )
 
     with SessionLocal() as session:
         ensure_meeting_embeddings(session, UUID(meeting_id), embedder=embedder)
@@ -157,5 +183,5 @@ def test_delete_transcript_asset_removes_imported_segments_and_embeddings(
         )
 
     assert delete_response.status_code == 204
-    assert transcript_response.json() == []
+    assert transcript_response.json()["items"] == []
     assert hits == []

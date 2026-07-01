@@ -86,9 +86,7 @@ def test_phase8_golden_sample_runs_from_upload_to_qa() -> None:
     sample = _load_sample()
     app.dependency_overrides[get_embedder] = lambda: GoldenSampleEmbedder()
     app.dependency_overrides[get_llm_extractor] = lambda: GoldenSampleExtractor(sample)
-    app.dependency_overrides[get_answer_synthesizer] = (
-        lambda: GoldenSampleSynthesizer()
-    )
+    app.dependency_overrides[get_answer_synthesizer] = lambda: GoldenSampleSynthesizer()
     client = TestClient(app)
 
     try:
@@ -123,7 +121,7 @@ def test_phase8_golden_sample_runs_from_upload_to_qa() -> None:
     assert upload_response.status_code == 201
     assert upload_response.json()["job"]["job_type"] == "structure"
     assert transcript_response.status_code == 200
-    assert len(transcript_response.json()) == 1
+    assert len(transcript_response.json()["items"]) == 1
     assert structure_response.status_code == 200
     assert structure_response.json()["action_items"][0]["owner_text"] == "Nina"
     assert qa_response.status_code == 200

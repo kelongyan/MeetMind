@@ -17,6 +17,7 @@ class KnowledgeSearchResultRead(BaseModel):
     title: str
     snippet: str
     created_at: datetime
+    score: float | None = None
 
 
 class KnowledgeDecisionRead(BaseModel):

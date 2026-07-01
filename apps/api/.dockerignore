@@ -1,0 +1,16 @@
+# ---- MeetMind API .dockerignore ----
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+storage/
+*.egg-info/
+.env
+.env.*
+!.env.example
+tests/
+doc/

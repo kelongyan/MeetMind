@@ -1,12 +1,23 @@
+# ============================================================
+# MeetMind – Local Development Infrastructure
+# ============================================================
+# Usage:
+#   pnpm infra:up     – start all services
+#   pnpm infra:down   – stop all services
+#
+# For full-stack development with API + Web containers:
+#   docker compose -f infra/docker-compose.yml up --build
+
 services:
+  # ---- PostgreSQL 17 + pgvector ----
   postgres:
     image: pgvector/pgvector:pg17
     container_name: meetmind-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: meetmind
-      POSTGRES_USER: meetmind
-      POSTGRES_PASSWORD: meetmind
+      POSTGRES_DB: ${POSTGRES_DB:-meetmind}
+      POSTGRES_USER: ${POSTGRES_USER:-meetmind}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -18,6 +29,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---- Redis 7 ----
   redis:
     image: redis:7-alpine
     container_name: meetmind-redis
@@ -32,14 +44,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---- MinIO (S3-compatible object storage) ----
   minio:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: meetmind-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: meetmind
-      MINIO_ROOT_PASSWORD: meetmind-local-password
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-meetmind}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-meetmind-local-password}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -51,6 +64,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---- MinIO bucket initialiser (one-shot) ----
   minio-init:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: meetmind-minio-init
@@ -63,3 +77,90 @@ services:
         mc alias set local http://minio:9000 meetmind meetmind-local-password
         && mc mb --ignore-existing local/meetmind-local
     restart: "no"
+
+  # ---- MeetMind API (FastAPI) ----
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: meetmind-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://meetmind:meetmind@postgres:5432/meetmind
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_BUCKET_NAME: meetmind-local
+      S3_ACCESS_KEY_ID: meetmind
+      S3_SECRET_ACCESS_KEY: meetmind-local-password
+      UPLOAD_STORAGE_DIR: /app/storage/uploads
+      TRANSCRIPTION_WORK_DIR: /app/storage/transcription
+    env_file:
+      - ../.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../storage/docker/api-uploads:/app/storage/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ---- MeetMind Web (Next.js) ----
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: meetmind-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # ---- Celery Worker ----
+  worker:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: meetmind-worker
+    restart: unless-stopped
+    command: celery -A app.worker worker --loglevel=info --concurrency=2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://meetmind:meetmind@postgres:5432/meetmind
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_BUCKET_NAME: meetmind-local
+      S3_ACCESS_KEY_ID: meetmind
+      S3_SECRET_ACCESS_KEY: meetmind-local-password
+      UPLOAD_STORAGE_DIR: /app/storage/uploads
+      TRANSCRIPTION_WORK_DIR: /app/storage/transcription
+      CELERY_ENABLED: "true"
+    env_file:
+      - ../.env
+    volumes:
+      - ../storage/docker/api-uploads:/app/storage/uploads

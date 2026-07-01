@@ -11,6 +11,7 @@ def get_transcriber() -> Transcriber:
         return OpenAITranscriber(
             api_key=settings.openai_api_key,
             model=settings.openai_transcription_model,
+            base_url=settings.openai_base_url,
         )
 
     raise ConflictError("ASR provider is not configured")

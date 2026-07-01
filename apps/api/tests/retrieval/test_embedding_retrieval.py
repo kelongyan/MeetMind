@@ -128,9 +128,9 @@ def test_rebuild_embeddings_includes_sections_and_insights() -> None:
 
 def test_ensure_embeddings_rebuilds_when_embedding_model_changes() -> None:
     client = TestClient(app)
-    meeting_id = client.post(
-        "/api/meetings", json={"title": "Model refresh"}
-    ).json()["id"]
+    meeting_id = client.post("/api/meetings", json={"title": "Model refresh"}).json()[
+        "id"
+    ]
     client.post(
         f"/api/meetings/{meeting_id}/transcript",
         json={
@@ -170,7 +170,13 @@ def test_rebuild_embeddings_preserves_published_meeting_status() -> None:
             "confidence": 0.95,
         },
     )
-    client.patch(f"/api/meetings/{meeting_id}", json={"status": "published"})
+    # Status is managed by the pipeline, so set it directly via ORM for testing.
+    from app.db.models import Meeting, MeetingStatus
+
+    with SessionLocal() as session:
+        meeting = session.get(Meeting, UUID(meeting_id))
+        meeting.status = MeetingStatus.PUBLISHED
+        session.commit()
 
     with SessionLocal() as session:
         rebuild_meeting_embeddings(
@@ -184,9 +190,7 @@ def test_rebuild_embeddings_preserves_published_meeting_status() -> None:
 
 def test_new_transcript_segment_after_embedding_build_is_searchable() -> None:
     client = TestClient(app)
-    meeting_id = client.post("/api/meetings", json={"title": "Live notes"}).json()[
-        "id"
-    ]
+    meeting_id = client.post("/api/meetings", json={"title": "Live notes"}).json()["id"]
     client.post(
         f"/api/meetings/{meeting_id}/transcript",
         json={
@@ -227,9 +231,9 @@ def test_new_transcript_segment_after_embedding_build_is_searchable() -> None:
 
 def test_new_action_item_after_embedding_build_is_searchable() -> None:
     client = TestClient(app)
-    meeting_id = client.post(
-        "/api/meetings", json={"title": "Action refresh"}
-    ).json()["id"]
+    meeting_id = client.post("/api/meetings", json={"title": "Action refresh"}).json()[
+        "id"
+    ]
     segment = client.post(
         f"/api/meetings/{meeting_id}/transcript",
         json={
@@ -282,9 +286,9 @@ def test_new_action_item_after_embedding_build_is_searchable() -> None:
 
 def test_new_insight_after_embedding_build_is_searchable() -> None:
     client = TestClient(app)
-    meeting_id = client.post(
-        "/api/meetings", json={"title": "Insight refresh"}
-    ).json()["id"]
+    meeting_id = client.post("/api/meetings", json={"title": "Insight refresh"}).json()[
+        "id"
+    ]
     segment = client.post(
         f"/api/meetings/{meeting_id}/transcript",
         json={
@@ -340,9 +344,9 @@ def test_text_upload_after_embedding_build_is_searchable(
 ) -> None:
     monkeypatch.setattr(settings, "upload_storage_dir", str(tmp_path / "storage"))
     client = TestClient(app)
-    meeting_id = client.post(
-        "/api/meetings", json={"title": "Upload refresh"}
-    ).json()["id"]
+    meeting_id = client.post("/api/meetings", json={"title": "Upload refresh"}).json()[
+        "id"
+    ]
     client.post(
         f"/api/meetings/{meeting_id}/transcript",
         json={

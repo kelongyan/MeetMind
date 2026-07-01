@@ -48,18 +48,19 @@ class FailingAnswerSynthesizer:
         raise RuntimeError("answer provider unavailable")
 
 
-def test_ask_meeting_question_returns_answer_with_citation() -> None:
+def test_ask_meeting_question_returns_answer_with_citation(
+    auth_headers: dict[str, str],
+) -> None:
     app.dependency_overrides[get_embedder] = lambda: KeywordEmbedder()
-    app.dependency_overrides[get_answer_synthesizer] = (
-        lambda: FakeAnswerSynthesizer()
-    )
+    app.dependency_overrides[get_answer_synthesizer] = lambda: FakeAnswerSynthesizer()
     client = TestClient(app)
-    meeting_id, segment_id = _create_meeting_with_rollout_action(client)
+    meeting_id, segment_id = _create_meeting_with_rollout_action(client, auth_headers)
 
     try:
         response = client.post(
             f"/api/meetings/{meeting_id}/qa",
             json={"question": "Who owns the rollout checklist?"},
+            headers=auth_headers,
         )
     finally:
         app.dependency_overrides.clear()
@@ -79,53 +80,65 @@ def test_ask_meeting_question_returns_answer_with_citation() -> None:
     assert UUID(body["conversation_id"])
 
 
-def test_answer_provider_failure_returns_502_without_saving_messages() -> None:
+def test_answer_provider_failure_returns_502_without_saving_messages(
+    auth_headers: dict[str, str],
+) -> None:
     app.dependency_overrides[get_embedder] = lambda: KeywordEmbedder()
-    app.dependency_overrides[get_answer_synthesizer] = (
-        lambda: FailingAnswerSynthesizer()
+    app.dependency_overrides[get_answer_synthesizer] = lambda: (
+        FailingAnswerSynthesizer()
     )
     client = TestClient(app, raise_server_exceptions=False)
-    meeting_id, _segment_id = _create_meeting_with_rollout_action(client)
+    meeting_id, _segment_id = _create_meeting_with_rollout_action(client, auth_headers)
 
     try:
         response = client.post(
             f"/api/meetings/{meeting_id}/qa",
             json={"question": "Who owns the rollout checklist?"},
+            headers=auth_headers,
         )
-        messages_response = client.get(f"/api/meetings/{meeting_id}/qa")
+        messages_response = client.get(
+            f"/api/meetings/{meeting_id}/qa", headers=auth_headers
+        )
     finally:
         app.dependency_overrides.clear()
 
     assert response.status_code == 502
     assert response.json()["detail"] == "failing-answer provider call failed"
-    assert messages_response.json() == []
+    assert messages_response.json()["items"] == []
 
 
-def test_ask_meeting_question_refuses_when_no_citable_evidence() -> None:
+def test_ask_meeting_question_refuses_when_no_citable_evidence(
+    auth_headers: dict[str, str],
+) -> None:
     app.dependency_overrides[get_embedder] = lambda: KeywordEmbedder()
     client = TestClient(app)
-    meeting_id = client.post("/api/meetings", json={"title": "Empty"}).json()["id"]
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Empty"}, headers=auth_headers
+    ).json()["id"]
 
     try:
         response = client.post(
             f"/api/meetings/{meeting_id}/qa",
             json={"question": "Who owns the rollout checklist?"},
+            headers=auth_headers,
         )
     finally:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
     body = response.json()
-    assert body["answer"]["content"] == (
-        "证据不足，无法根据当前会议内容回答这个问题。"
-    )
+    assert body["answer"]["content"] == ("证据不足，无法根据当前会议内容回答这个问题。")
     assert body["citations"] == []
     assert body["answer"]["citation_ids"] == []
 
 
-def _create_meeting_with_rollout_action(client: TestClient) -> tuple[str, str]:
+def _create_meeting_with_rollout_action(
+    client: TestClient, auth_headers: dict[str, str]
+) -> tuple[str, str]:
     meeting_id = client.post(
-        "/api/meetings", json={"title": "Launch review", "language": "en"}
+        "/api/meetings",
+        json={"title": "Launch review", "language": "en"},
+        headers=auth_headers,
     ).json()["id"]
     segment = client.post(
         f"/api/meetings/{meeting_id}/transcript",
@@ -135,6 +148,7 @@ def _create_meeting_with_rollout_action(client: TestClient) -> tuple[str, str]:
             "text": "Nina will own the rollout checklist before Friday.",
             "confidence": 0.95,
         },
+        headers=auth_headers,
     ).json()
     action = client.post(
         f"/api/meetings/{meeting_id}/action-items",
@@ -144,6 +158,7 @@ def _create_meeting_with_rollout_action(client: TestClient) -> tuple[str, str]:
             "due_text": "Friday",
             "confidence": 0.89,
         },
+        headers=auth_headers,
     ).json()
     client.post(
         f"/api/meetings/{meeting_id}/citations",
@@ -156,5 +171,6 @@ def _create_meeting_with_rollout_action(client: TestClient) -> tuple[str, str]:
             "quote": "Nina will own the rollout checklist before Friday.",
             "confidence": 0.9,
         },
+        headers=auth_headers,
     )
     return meeting_id, segment["id"]

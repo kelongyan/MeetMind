@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, ListChecks, Plus, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import type {
 import { buildInsightGroups, filterMeetings } from "./view-model";
 import { segmentDomId } from "./components/shared/tone-utils";
 
+import type { ActiveView } from "@/components/layout/app-shell";
 import { AppShell } from "@/components/layout/app-shell";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { MeetingList } from "./components/meeting-list/meeting-list";
@@ -40,30 +41,26 @@ import { useUpload } from "@/hooks/use-upload";
 import { useQA } from "@/hooks/use-qa";
 import { useJobs } from "@/hooks/use-jobs";
 import { useReview } from "@/hooks/use-review";
+import { useDebounce } from "@/hooks/use-debounce";
+import { SEARCH_DEBOUNCE_MS } from "@/lib/constants";
 
 export function MeetingWorkbench() {
   const api = useMemo(() => createMeetMindApi(), []);
-  const [activeView, setActiveView] = useState<
-    "meetings" | "action-items" | "knowledge" | "operations"
-  >("meetings");
+  const [activeView, setActiveView] = useState<ActiveView>("meetings");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Meeting list state
-  const {
-    meetings,
-    listState,
-    listError,
-    refreshMeetings,
-  } = useMeetings(api);
+  const { meetings, listState, listError, refreshMeetings } = useMeetings(api);
 
-  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
+    null,
+  );
 
   // Meeting detail state
-  const {
-    detail,
-    detailState,
-    detailError,
-    loadDetail,
-  } = useMeetingDetail(api, selectedMeetingId);
+  const { detail, detailState, detailError, loadDetail } = useMeetingDetail(
+    api,
+    selectedMeetingId,
+  );
 
   // Upload state
   const {
@@ -90,23 +87,20 @@ export function MeetingWorkbench() {
   } = useQA(api, selectedMeetingId, detail?.citations);
 
   // Jobs state
-  const {
-    jobState,
-    jobMessage,
-    handleRunJob,
-    handleRetryJob,
-  } = useJobs(api, selectedMeetingId, refreshMeetings, loadDetail);
+  const { jobState, jobMessage, handleRunJob, handleRetryJob } = useJobs(
+    api,
+    selectedMeetingId,
+    refreshMeetings,
+    loadDetail,
+  );
 
   // Review state
-  const {
-    reviewState,
-    reviewMessage,
-    handleUpdateInsight,
-    handleUpdateActionItem,
-  } = useReview(api, selectedMeetingId, loadDetail);
+  const { reviewState, reviewMessage, handleUpdateInsight, handleUpdateActionItem } =
+    useReview(api, selectedMeetingId, loadDetail);
 
-  // Search and filter
+  // Search and filter (with debounce)
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, SEARCH_DEBOUNCE_MS);
   const [statusFilter, setStatusFilter] = useState<MeetingStatusFilter>("all");
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [actionItemsState, setActionItemsState] = useState<LoadState>("idle");
@@ -114,34 +108,41 @@ export function MeetingWorkbench() {
   const [actionStatusFilter, setActionStatusFilter] =
     useState<ActionStatusFilter>("all");
   const [knowledgeQuery, setKnowledgeQuery] = useState("");
-  const [knowledgeResults, setKnowledgeResults] = useState<KnowledgeSearchResult[]>(
-    [],
+  const debouncedKnowledgeQuery = useDebounce(
+    knowledgeQuery,
+    SEARCH_DEBOUNCE_MS,
   );
-  const [knowledgeDecisions, setKnowledgeDecisions] = useState<KnowledgeDecision[]>(
-    [],
-  );
+  const [knowledgeResults, setKnowledgeResults] = useState<
+    KnowledgeSearchResult[]
+  >([]);
+  const [knowledgeDecisions, setKnowledgeDecisions] = useState<
+    KnowledgeDecision[]
+  >([]);
   const [duplicateActionGroups, setDuplicateActionGroups] = useState<
     DuplicateActionGroup[]
   >([]);
   const [knowledgeState, setKnowledgeState] = useState<LoadState>("idle");
   const [knowledgeError, setKnowledgeError] = useState<string | null>(null);
-  const [providerStatus, setProviderStatus] = useState<ProviderStatusList | null>(
-    null,
-  );
+  const [providerStatus, setProviderStatus] =
+    useState<ProviderStatusList | null>(null);
   const [providerTelemetry, setProviderTelemetry] =
     useState<ProviderTelemetryList | null>(null);
-  const [taskSyncStatus, setTaskSyncStatus] = useState<TaskSyncStatus | null>(null);
+  const [taskSyncStatus, setTaskSyncStatus] = useState<TaskSyncStatus | null>(
+    null,
+  );
   const [operationsState, setOperationsState] = useState<LoadState>("idle");
   const [operationsError, setOperationsError] = useState<string | null>(null);
 
   // Citation highlight
-  const [highlightedSegmentId, setHighlightedSegmentId] = useState<string | null>(null);
+  const [highlightedSegmentId, setHighlightedSegmentId] = useState<string | null>(
+    null,
+  );
   const [pulsedSegmentId, setPulsedSegmentId] = useState<string | null>(null);
   const highlightResetRef = useRef<number | null>(null);
 
   const visibleMeetings = useMemo(
-    () => filterMeetings(meetings, query, statusFilter),
-    [meetings, query, statusFilter],
+    () => filterMeetings(meetings, debouncedQuery, statusFilter),
+    [meetings, debouncedQuery, statusFilter],
   );
 
   const selectedMeeting =
@@ -179,9 +180,16 @@ export function MeetingWorkbench() {
       setPulsedSegmentId(null);
       highlightResetRef.current = null;
     }, 2800);
+    // Respect prefers-reduced-motion
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     window.requestAnimationFrame(() => {
       const element = document.getElementById(segmentDomId(segmentId));
-      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+      element?.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "center",
+      });
       element?.focus({ preventScroll: true });
     });
   }
@@ -205,6 +213,11 @@ export function MeetingWorkbench() {
       }
     };
   }, []);
+
+  function handleViewChange(view: ActiveView) {
+    setActiveView(view);
+    setSidebarOpen(false); // Close mobile sidebar on navigation
+  }
 
   function handleRefresh() {
     void refreshMeetings();
@@ -248,33 +261,37 @@ export function MeetingWorkbench() {
     setActiveView("meetings");
   }
 
-  async function loadKnowledge(query = knowledgeQuery) {
-    setKnowledgeState("loading");
-    setKnowledgeError(null);
-    try {
-      const [results, decisions, duplicates] = await Promise.all([
-        query.trim()
-          ? api.searchKnowledge({
-              workspaceId,
-              query: query.trim(),
-            })
-          : Promise.resolve([]),
-        api.listKnowledgeDecisions(workspaceId),
-        api.listDuplicateActionCandidates(workspaceId),
-      ]);
-      setKnowledgeResults(results);
-      setKnowledgeDecisions(decisions);
-      setDuplicateActionGroups(duplicates);
-      setKnowledgeState("success");
-    } catch (error) {
-      setKnowledgeState("error");
-      setKnowledgeError(
-        error instanceof Error && error.message
-          ? error.message
-          : "无法读取知识库。",
-      );
-    }
-  }
+  const loadKnowledge = useCallback(
+    async (q?: string) => {
+      const searchQuery = q ?? debouncedKnowledgeQuery;
+      setKnowledgeState("loading");
+      setKnowledgeError(null);
+      try {
+        const [results, decisions, duplicates] = await Promise.all([
+          searchQuery.trim()
+            ? api.searchKnowledge({
+                workspaceId,
+                query: searchQuery.trim(),
+              })
+            : Promise.resolve([]),
+          api.listKnowledgeDecisions(workspaceId),
+          api.listDuplicateActionCandidates(workspaceId),
+        ]);
+        setKnowledgeResults(results);
+        setKnowledgeDecisions(decisions);
+        setDuplicateActionGroups(duplicates);
+        setKnowledgeState("success");
+      } catch (error) {
+        setKnowledgeState("error");
+        setKnowledgeError(
+          error instanceof Error && error.message
+            ? error.message
+            : "无法读取知识库。",
+        );
+      }
+    },
+    [api, debouncedKnowledgeQuery, workspaceId],
+  );
 
   function handleOpenKnowledgeMeeting(meetingId: string) {
     setSelectedMeetingId(meetingId);
@@ -320,6 +337,7 @@ export function MeetingWorkbench() {
     }
   }
 
+  // Auto-load when switching views
   useEffect(() => {
     if (activeView === "action-items") {
       void loadActionItems(actionStatusFilter);
@@ -334,6 +352,8 @@ export function MeetingWorkbench() {
 
   const sidebar = (
     <AppSidebar
+      activeView={activeView}
+      onViewChange={handleViewChange}
       title={title}
       language={language}
       file={file}
@@ -348,45 +368,71 @@ export function MeetingWorkbench() {
   );
 
   return (
-    <AppShell sidebar={sidebar} onRefresh={handleRefresh}>
+    <AppShell
+      sidebar={sidebar}
+      onRefresh={handleRefresh}
+      sidebarOpen={sidebarOpen}
+      onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+    >
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="tablist"
+          aria-label="视图切换"
+        >
           <Button
+            role="tab"
+            aria-selected={activeView === "meetings"}
             variant={activeView === "meetings" ? "default" : "outline"}
             size="sm"
             type="button"
-            onClick={() => setActiveView("meetings")}
+            onClick={() => handleViewChange("meetings")}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             会议
           </Button>
           <Button
+            role="tab"
+            aria-selected={activeView === "action-items"}
             variant={activeView === "action-items" ? "default" : "outline"}
             size="sm"
             type="button"
-            onClick={() => setActiveView("action-items")}
+            onClick={() => handleViewChange("action-items")}
           >
             <ListChecks className="h-4 w-4" aria-hidden="true" />
             行动项
           </Button>
           <Button
+            role="tab"
+            aria-selected={activeView === "knowledge"}
             variant={activeView === "knowledge" ? "default" : "outline"}
             size="sm"
             type="button"
-            onClick={() => setActiveView("knowledge")}
+            onClick={() => handleViewChange("knowledge")}
           >
             <BookOpen className="h-4 w-4" aria-hidden="true" />
             知识库
           </Button>
           <Button
+            role="tab"
+            aria-selected={activeView === "operations"}
             variant={activeView === "operations" ? "default" : "outline"}
             size="sm"
             type="button"
-            onClick={() => setActiveView("operations")}
+            onClick={() => handleViewChange("operations")}
           >
             <Settings2 className="h-4 w-4" aria-hidden="true" />
             运维
           </Button>
+        </div>
+
+        {/* aria-live region for status announcements */}
+        <div aria-live="polite" className="sr-only">
+          {listState === "loading"
+            ? "会议列表加载中"
+            : detailState === "loading"
+              ? "会议详情加载中"
+              : ""}
         </div>
 
         {activeView === "operations" ? (

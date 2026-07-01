@@ -20,9 +20,13 @@ class KeywordEmbedder:
         )
 
 
-def test_action_item_confirm_progress_done_preserves_citation() -> None:
+def test_action_item_confirm_progress_done_preserves_citation(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, _segment_id, action_id = _create_meeting_action_with_citation(client)
+    meeting_id, _segment_id, action_id = _create_meeting_action_with_citation(
+        client, auth_headers
+    )
 
     confirmed = client.patch(
         f"/api/meetings/{meeting_id}/action-items/{action_id}",
@@ -30,6 +34,7 @@ def test_action_item_confirm_progress_done_preserves_citation() -> None:
             "status": "confirmed",
             "confirmed_by_user_id": "user-1",
         },
+        headers=auth_headers,
     )
     assert confirmed.status_code == 200
     assert confirmed.json()["status"] == "confirmed"
@@ -39,12 +44,16 @@ def test_action_item_confirm_progress_done_preserves_citation() -> None:
     in_progress = client.patch(
         f"/api/meetings/{meeting_id}/action-items/{action_id}",
         json={"status": "in_progress"},
+        headers=auth_headers,
     )
     done = client.patch(
         f"/api/meetings/{meeting_id}/action-items/{action_id}",
         json={"status": "done"},
+        headers=auth_headers,
     )
-    citations = client.get(f"/api/meetings/{meeting_id}/citations").json()
+    citations = client.get(
+        f"/api/meetings/{meeting_id}/citations", headers=auth_headers
+    ).json()["items"]
 
     assert in_progress.status_code == 200
     assert done.status_code == 200
@@ -53,31 +62,46 @@ def test_action_item_confirm_progress_done_preserves_citation() -> None:
     assert citations[0]["target_id"] == action_id
 
 
-def test_confirm_requires_user_record_and_invalid_transition_is_rejected() -> None:
+def test_invalid_status_transition_is_rejected(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, _segment_id, action_id = _create_meeting_action_with_citation(client)
+    meeting_id, _segment_id, action_id = _create_meeting_action_with_citation(
+        client, auth_headers
+    )
 
-    missing_user = client.patch(
+    # Confirming without explicit confirmed_by_user_id succeeds — router
+    # auto-injects the authenticated user's ID (Phase 5.1).
+    auto_confirmed = client.patch(
         f"/api/meetings/{meeting_id}/action-items/{action_id}",
         json={"status": "confirmed"},
+        headers=auth_headers,
     )
+    assert auto_confirmed.status_code == 200
+    assert auto_confirmed.json()["status"] == "confirmed"
+    assert auto_confirmed.json()["confirmed_by_user_id"]
+
     invalid_transition = client.patch(
         f"/api/meetings/{meeting_id}/action-items/{action_id}",
-        json={"status": "done"},
+        json={"status": "proposed"},
+        headers=auth_headers,
     )
 
-    assert missing_user.status_code == 409
-    assert "confirmed_by_user_id" in missing_user.json()["detail"]
     assert invalid_transition.status_code == 409
     assert "transition" in invalid_transition.json()["detail"]
 
 
-def test_canceled_action_item_is_not_indexed_as_qa_action_source() -> None:
+def test_canceled_action_item_is_not_indexed_as_qa_action_source(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, _segment_id, action_id = _create_meeting_action_with_citation(client)
+    meeting_id, _segment_id, action_id = _create_meeting_action_with_citation(
+        client, auth_headers
+    )
     response = client.patch(
         f"/api/meetings/{meeting_id}/action-items/{action_id}",
         json={"status": "canceled"},
+        headers=auth_headers,
     )
     assert response.status_code == 200
 
@@ -89,35 +113,47 @@ def test_canceled_action_item_is_not_indexed_as_qa_action_source() -> None:
     assert EmbeddingSourceType.ACTION_ITEM not in result.source_counts
 
 
-def test_list_global_action_items_can_filter_by_status() -> None:
+def test_list_global_action_items_can_filter_by_status(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
     first_meeting_id, _first_segment_id, first_action_id = (
-        _create_meeting_action_with_citation(client)
+        _create_meeting_action_with_citation(client, auth_headers)
     )
     second_meeting_id, _second_segment_id, second_action_id = (
-        _create_meeting_action_with_citation(client)
+        _create_meeting_action_with_citation(client, auth_headers)
     )
     client.patch(
         f"/api/meetings/{first_meeting_id}/action-items/{first_action_id}",
         json={"status": "confirmed", "confirmed_by_user_id": "user-1"},
+        headers=auth_headers,
     )
     client.patch(
         f"/api/meetings/{second_meeting_id}/action-items/{second_action_id}",
         json={"status": "canceled"},
+        headers=auth_headers,
     )
 
-    all_response = client.get("/api/action-items")
-    confirmed_response = client.get("/api/action-items?status=confirmed")
+    all_response = client.get("/api/action-items", headers=auth_headers)
+    confirmed_response = client.get(
+        "/api/action-items?status=confirmed", headers=auth_headers
+    )
 
     assert all_response.status_code == 200
-    assert len(all_response.json()) == 2
+    assert len(all_response.json()["items"]) == 2
     assert confirmed_response.status_code == 200
-    assert [item["id"] for item in confirmed_response.json()] == [first_action_id]
+    assert [item["id"] for item in confirmed_response.json()["items"]] == [
+        first_action_id
+    ]
 
 
-def _create_meeting_action_with_citation(client: TestClient) -> tuple[str, str, str]:
+def _create_meeting_action_with_citation(
+    client: TestClient, auth_headers: dict[str, str]
+) -> tuple[str, str, str]:
     meeting_id = client.post(
-        "/api/meetings", json={"title": "Lifecycle review", "language": "en"}
+        "/api/meetings",
+        json={"title": "Lifecycle review", "language": "en"},
+        headers=auth_headers,
     ).json()["id"]
     segment = client.post(
         f"/api/meetings/{meeting_id}/transcript",
@@ -127,6 +163,7 @@ def _create_meeting_action_with_citation(client: TestClient) -> tuple[str, str, 
             "text": "Nina will own the rollout checklist before Friday.",
             "confidence": 0.95,
         },
+        headers=auth_headers,
     ).json()
     action = client.post(
         f"/api/meetings/{meeting_id}/action-items",
@@ -136,6 +173,7 @@ def _create_meeting_action_with_citation(client: TestClient) -> tuple[str, str, 
             "due_text": "Friday",
             "confidence": 0.9,
         },
+        headers=auth_headers,
     ).json()
     client.post(
         f"/api/meetings/{meeting_id}/citations",
@@ -148,6 +186,7 @@ def _create_meeting_action_with_citation(client: TestClient) -> tuple[str, str, 
             "quote": "Nina will own the rollout checklist before Friday.",
             "confidence": 0.92,
         },
+        headers=auth_headers,
     )
     return meeting_id, segment["id"], action["id"]
 

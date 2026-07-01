@@ -3,10 +3,20 @@
   "private": true,
   "packageManager": "pnpm@11.7.0",
   "scripts": {
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
-    "infra:down": "docker compose -f infra/docker-compose.yml down",
-    "lint": "pnpm --filter @meetmind/web lint",
+    "dev": "concurrently --names api,web --prefix-colors blue,green \"pnpm dev:api\" \"pnpm dev:web\"",
+    "dev:api": "cd apps/api && .venv/Scripts/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:web": "pnpm --filter @meetmind/web dev",
+    "build": "pnpm --filter @meetmind/web build",
+    "test": "pnpm --filter @meetmind/web test && pnpm test:api",
+    "test:api": "cd apps/api && .venv/Scripts/python -m pytest tests/ -v --tb=short",
+    "lint": "pnpm --filter @meetmind/web lint && cd apps/api && .venv/Scripts/ruff check .",
     "typecheck": "pnpm --filter @meetmind/web typecheck",
-    "test": "pnpm --filter @meetmind/web test"
+    "db:migrate": "cd apps/api && .venv/Scripts/python -m alembic upgrade head",
+    "db:rollback": "cd apps/api && .venv/Scripts/python -m alembic downgrade -1",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

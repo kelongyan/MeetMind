@@ -5,16 +5,22 @@ from app.providers.asr.base import TranscribedSegment
 
 
 class OpenAITranscriber:
-    def __init__(self, *, api_key: str, model: str) -> None:
+    def __init__(
+        self, *, api_key: str, model: str, base_url: str | None = None
+    ) -> None:
         self.api_key = api_key
         self.model = model
+        self.base_url = base_url
 
     def transcribe(
         self, audio_path: Path, language: str | None = None
     ) -> list[TranscribedSegment]:
         from openai import OpenAI
 
-        client = OpenAI(api_key=self.api_key)
+        kwargs: dict[str, object] = {"api_key": self.api_key}
+        if self.base_url:
+            kwargs["base_url"] = self.base_url
+        client = OpenAI(**kwargs)  # type: ignore[arg-type]
         with audio_path.open("rb") as audio_file:
             response = client.audio.transcriptions.create(
                 model=self.model,

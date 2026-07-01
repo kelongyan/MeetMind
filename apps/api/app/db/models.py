@@ -114,6 +114,12 @@ class QAMessageRole(StrEnum):
     ASSISTANT = "assistant"
 
 
+class UserRole(StrEnum):
+    ADMIN = "admin"
+    MEMBER = "member"
+    VIEWER = "viewer"
+
+
 class Meeting(Base):
     __tablename__ = "meetings"
 
@@ -445,3 +451,46 @@ class QAMessage(Base):
     )
 
     meeting: Mapped[Meeting] = relationship(back_populates="qa_messages")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(enum_type(UserRole), default=UserRole.MEMBER)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+
+class ProviderTelemetryRecord(Base):
+    __tablename__ = "provider_telemetry"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    provider: Mapped[str] = mapped_column(String(128), index=True)
+    operation: Mapped[str] = mapped_column(String(128))
+    model: Mapped[str | None] = mapped_column(String(128))
+    prompt_version: Mapped[str | None] = mapped_column(String(128))
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    estimated_units: Mapped[int] = mapped_column(Integer, default=0)
+    cost_estimate_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(32))
+    failure_type: Mapped[str | None] = mapped_column(String(128))
+    failure_message: Mapped[str | None] = mapped_column(Text)
+    request_id: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, index=True
+    )

@@ -1,3 +1,5 @@
+"""Provider call telemetry with in-memory aggregation and DB persistence."""
+
 from __future__ import annotations
 
 import logging
@@ -5,7 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from time import perf_counter
 
-logger = logging.getLogger("meetmind.provider")
+import structlog
+
+logger = structlog.get_logger("meetmind.provider")
 
 
 @dataclass
@@ -65,20 +69,30 @@ def observe_provider_call[T](
             cost_estimate_usd=cost_estimate,
             failed=True,
         )
+        _persist_record(
+            operation=operation,
+            provider=provider,
+            model=model,
+            prompt_version=prompt_version,
+            latency_ms=latency_ms,
+            estimated_units=estimated_units,
+            cost_estimate_usd=cost_estimate,
+            status="failed",
+            failure_type=type(exc).__name__,
+            failure_message=str(exc),
+        )
         logger.info(
             "provider_call",
-            extra={
-                "operation": operation,
-                "provider": provider,
-                "model": model,
-                "prompt_version": prompt_version,
-                "latency_ms": latency_ms,
-                "estimated_units": estimated_units,
-                "cost_estimate_usd": cost_estimate,
-                "status": "failed",
-                "failure_type": type(exc).__name__,
-                "failure_message": str(exc),
-            },
+            operation=operation,
+            provider=provider,
+            model=model,
+            prompt_version=prompt_version,
+            latency_ms=latency_ms,
+            estimated_units=estimated_units,
+            cost_estimate_usd=cost_estimate,
+            status="failed",
+            failure_type=type(exc).__name__,
+            failure_message=str(exc),
         )
         raise ProviderCallError(provider, operation, exc) from exc
 
@@ -96,20 +110,28 @@ def observe_provider_call[T](
         cost_estimate_usd=cost_estimate,
         failed=False,
     )
+    _persist_record(
+        operation=operation,
+        provider=provider,
+        model=logged_model,
+        prompt_version=prompt_version,
+        latency_ms=latency_ms,
+        estimated_units=estimated_units,
+        cost_estimate_usd=cost_estimate,
+        status="succeeded",
+        failure_type=None,
+        failure_message=None,
+    )
     logger.info(
         "provider_call",
-        extra={
-            "operation": operation,
-            "provider": provider,
-            "model": logged_model,
-            "prompt_version": prompt_version,
-            "latency_ms": latency_ms,
-            "estimated_units": estimated_units,
-            "cost_estimate_usd": cost_estimate,
-            "status": "succeeded",
-            "failure_type": None,
-            "failure_message": None,
-        },
+        operation=operation,
+        provider=provider,
+        model=logged_model,
+        prompt_version=prompt_version,
+        latency_ms=latency_ms,
+        estimated_units=estimated_units,
+        cost_estimate_usd=cost_estimate,
+        status="succeeded",
     )
     return result
 
@@ -159,3 +181,42 @@ def _record_summary(
         summary.failure_count += 1
     summary.total_latency_ms += latency_ms
     summary.cost_estimate_usd = round(summary.cost_estimate_usd + cost_estimate_usd, 8)
+
+
+def _persist_record(
+    *,
+    operation: str,
+    provider: str | None,
+    model: str | None,
+    prompt_version: str | None,
+    latency_ms: int,
+    estimated_units: int,
+    cost_estimate_usd: float,
+    status: str,
+    failure_type: str | None,
+    failure_message: str | None,
+) -> None:
+    """Write a telemetry record to the DB. Failures are logged but not raised."""
+    try:
+        from app.db.models import ProviderTelemetryRecord
+        from app.db.session import SessionLocal
+
+        with SessionLocal() as session:
+            record = ProviderTelemetryRecord(
+                provider=provider or "unknown",
+                operation=operation,
+                model=model,
+                prompt_version=prompt_version,
+                latency_ms=latency_ms,
+                estimated_units=estimated_units,
+                cost_estimate_usd=cost_estimate_usd,
+                status=status,
+                failure_type=failure_type,
+                failure_message=failure_message,
+            )
+            session.add(record)
+            session.commit()
+    except Exception:
+        logging.getLogger("meetmind.provider").warning(
+            "Failed to persist telemetry record", exc_info=True
+        )

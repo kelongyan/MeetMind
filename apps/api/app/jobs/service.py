@@ -28,9 +28,16 @@ def create_processing_job(
     return job
 
 
-def list_processing_jobs(session: Session, meeting_id: UUID) -> list[ProcessingJob]:
+def list_processing_jobs(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[ProcessingJob]:
     get_meeting(session, meeting_id)
-    return repository.list_jobs(session, meeting_id)
+    return repository.list_jobs(session, meeting_id, offset=offset, limit=limit)
+
+
+def count_processing_jobs(session: Session, meeting_id: UUID) -> int:
+    get_meeting(session, meeting_id)
+    return repository.count_jobs(session, meeting_id)
 
 
 def get_processing_job(session: Session, job_id: UUID) -> ProcessingJob:

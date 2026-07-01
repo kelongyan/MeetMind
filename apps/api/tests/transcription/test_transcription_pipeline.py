@@ -47,15 +47,18 @@ def upload_storage_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_run_transcription_job_writes_segments_with_global_offsets(
-    upload_storage_dir: Path,
+    upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "Transcribe"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Transcribe"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     audio_bytes = _wave_bytes(duration_ms=2200)
     upload_response = client.post(
         f"/api/meetings/{meeting_id}/assets",
         files={"file": ("sample.wav", audio_bytes, "audio/wav")},
+        headers=auth_headers,
     )
     asset_id = upload_response.json()["asset"]["id"]
     job_id = UUID(upload_response.json()["job"]["id"])
@@ -73,26 +76,35 @@ def test_run_transcription_job_writes_segments_with_global_offsets(
     assert [segment.end_ms for segment in result.segments] == [1000, 2000, 2200]
     assert {str(segment.source_asset_id) for segment in result.segments} == {asset_id}
 
-    transcript_response = client.get(f"/api/meetings/{meeting_id}/transcript")
+    transcript_response = client.get(
+        f"/api/meetings/{meeting_id}/transcript", headers=auth_headers
+    )
     assert transcript_response.status_code == 200
-    assert [item["start_ms"] for item in transcript_response.json()] == [0, 1000, 2000]
+    assert [item["start_ms"] for item in transcript_response.json()["items"]] == [
+        0,
+        1000,
+        2000,
+    ]
 
 
 def test_run_transcription_job_endpoint_uses_provider_dependency(
-    upload_storage_dir: Path,
+    upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:
     client = TestClient(app)
     app.dependency_overrides[get_transcriber] = lambda: FakeTranscriber()
-    meeting_response = client.post("/api/meetings", json={"title": "Run endpoint"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Run endpoint"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     upload_response = client.post(
         f"/api/meetings/{meeting_id}/assets",
         files={"file": ("endpoint.wav", _wave_bytes(duration_ms=1200), "audio/wav")},
+        headers=auth_headers,
     )
     job_id = upload_response.json()["job"]["id"]
 
     try:
-        run_response = client.post(f"/api/jobs/{job_id}/run")
+        run_response = client.post(f"/api/jobs/{job_id}/run", headers=auth_headers)
     finally:
         app.dependency_overrides.clear()
 
@@ -103,14 +115,17 @@ def test_run_transcription_job_endpoint_uses_provider_dependency(
 
 
 def test_failed_transcription_preserves_existing_transcript(
-    upload_storage_dir: Path,
+    upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "Failure"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Failure"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     upload_response = client.post(
         f"/api/meetings/{meeting_id}/assets",
         files={"file": ("failure.wav", _wave_bytes(duration_ms=1200), "audio/wav")},
+        headers=auth_headers,
     )
     asset_id = upload_response.json()["asset"]["id"]
     job_id = UUID(upload_response.json()["job"]["id"])
@@ -122,6 +137,7 @@ def test_failed_transcription_preserves_existing_transcript(
             "text": "existing transcript",
             "source_asset_id": asset_id,
         },
+        headers=auth_headers,
     )
     assert existing_response.status_code == 201
 
@@ -131,25 +147,28 @@ def test_failed_transcription_preserves_existing_transcript(
                 session, job_id, transcriber=FailingTranscriber()
             )
 
-    transcript_response = client.get(f"/api/meetings/{meeting_id}/transcript")
-    assert [item["text"] for item in transcript_response.json()] == [
+    transcript_response = client.get(
+        f"/api/meetings/{meeting_id}/transcript", headers=auth_headers
+    )
+    assert [item["text"] for item in transcript_response.json()["items"]] == [
         "existing transcript"
     ]
 
 
 def test_run_transcription_job_rejects_asset_from_another_meeting(
-    upload_storage_dir: Path,
+    upload_storage_dir: Path, auth_headers: dict[str, str]
 ) -> None:
     client = TestClient(app)
     source_meeting_id = client.post(
-        "/api/meetings", json={"title": "Source audio"}
+        "/api/meetings", json={"title": "Source audio"}, headers=auth_headers
     ).json()["id"]
     target_meeting_id = client.post(
-        "/api/meetings", json={"title": "Target audio"}
+        "/api/meetings", json={"title": "Target audio"}, headers=auth_headers
     ).json()["id"]
     upload_response = client.post(
         f"/api/meetings/{source_meeting_id}/assets",
         files={"file": ("source.wav", _wave_bytes(duration_ms=1000), "audio/wav")},
+        headers=auth_headers,
     )
     asset_id = UUID(upload_response.json()["asset"]["id"])
 

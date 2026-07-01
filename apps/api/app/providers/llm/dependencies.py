@@ -11,5 +11,6 @@ def get_llm_extractor() -> LLMExtractor:
         return OpenAILLMExtractor(
             api_key=settings.openai_api_key,
             model=settings.openai_llm_model,
+            base_url=settings.openai_base_url,
         )
     raise ConflictError("LLM provider is disabled")

@@ -30,8 +30,14 @@ def create_meeting(session: Session, payload: MeetingCreate) -> Meeting:
     return meeting
 
 
-def list_meetings(session: Session) -> list[Meeting]:
-    return repository.list_meetings(session)
+def list_meetings(
+    session: Session, *, offset: int = 0, limit: int = 50
+) -> list[Meeting]:
+    return repository.list_meetings(session, offset=offset, limit=limit)
+
+
+def count_meetings(session: Session) -> int:
+    return repository.count_meetings(session)
 
 
 def get_meeting(session: Session, meeting_id: UUID) -> Meeting:

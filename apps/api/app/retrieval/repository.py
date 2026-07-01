@@ -22,22 +22,21 @@ def delete_embeddings_for_meeting(session: Session, meeting_id: UUID) -> None:
     )
 
 
-def create_embedding(
-    session: Session, embedding: EmbeddingRecord
-) -> EmbeddingRecord:
+def create_embedding(session: Session, embedding: EmbeddingRecord) -> EmbeddingRecord:
     session.add(embedding)
     return embedding
 
 
 def count_embeddings_for_meeting(session: Session, meeting_id: UUID) -> int:
-    return len(
-        list(
-            session.scalars(
-                select(EmbeddingRecord.id).where(
-                    EmbeddingRecord.meeting_id == meeting_id
-                )
-            )
+    from sqlalchemy import func
+
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(EmbeddingRecord)
+            .where(EmbeddingRecord.meeting_id == meeting_id)
         )
+        or 0
     )
 
 

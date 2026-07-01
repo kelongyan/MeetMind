@@ -117,10 +117,26 @@ def _estimate_answer_units(question: str, evidence: list[AnswerEvidence]) -> int
 
 
 def list_qa_messages(
-    session: Session, meeting_id: UUID, conversation_id: UUID | None = None
+    session: Session,
+    meeting_id: UUID,
+    conversation_id: UUID | None = None,
+    *,
+    offset: int = 0,
+    limit: int = 50,
 ) -> list[QAMessage]:
     get_meeting(session, meeting_id)
-    return repository.list_messages(session, meeting_id, conversation_id)
+    return repository.list_messages(
+        session, meeting_id, conversation_id, offset=offset, limit=limit
+    )
+
+
+def count_qa_messages(
+    session: Session,
+    meeting_id: UUID,
+    conversation_id: UUID | None = None,
+) -> int:
+    get_meeting(session, meeting_id)
+    return repository.count_messages(session, meeting_id, conversation_id)
 
 
 def _create_answer_citations(

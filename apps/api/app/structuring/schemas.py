@@ -52,8 +52,17 @@ class StructuredActionItemDraft(BaseModel):
     citations: list[StructuredCitationDraft] = Field(default_factory=list)
 
 
+class StructuredSectionDraft(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    summary: str | None = None
+    start_segment_id: UUID
+    end_segment_id: UUID
+    topic_tags: list[str] = Field(default_factory=list)
+
+
 class StructuredMeetingExtraction(BaseModel):
     meeting_brief: StructuredMeetingBrief | None = None
+    sections: list[StructuredSectionDraft] = Field(default_factory=list)
     discussion_points: list[StructuredInsightDraft] = Field(default_factory=list)
     decisions: list[StructuredInsightDraft] = Field(default_factory=list)
     risks: list[StructuredInsightDraft] = Field(default_factory=list)

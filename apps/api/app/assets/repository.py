@@ -15,7 +15,9 @@ def get_asset(session: Session, asset_id: UUID) -> MeetingAsset | None:
     return session.get(MeetingAsset, asset_id)
 
 
-def list_assets(session: Session, meeting_id: UUID) -> list[MeetingAsset]:
+def list_assets(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[MeetingAsset]:
     return list(
         session.scalars(
             select(MeetingAsset)
@@ -24,7 +26,25 @@ def list_assets(session: Session, meeting_id: UUID) -> list[MeetingAsset]:
                 MeetingAsset.deleted_at.is_(None),
             )
             .order_by(MeetingAsset.created_at, MeetingAsset.id)
+            .offset(offset)
+            .limit(limit)
         )
+    )
+
+
+def count_assets(session: Session, meeting_id: UUID) -> int:
+    from sqlalchemy import func
+
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(MeetingAsset)
+            .where(
+                MeetingAsset.meeting_id == meeting_id,
+                MeetingAsset.deleted_at.is_(None),
+            )
+        )
+        or 0
     )
 
 

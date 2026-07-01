@@ -15,7 +15,7 @@ describe("MeetMind API client", () => {
         },
       ]),
     );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const meetings = await api.listMeetings();
 
@@ -44,7 +44,7 @@ describe("MeetMind API client", () => {
           job: { id: "job-1", status: "queued", job_type: "transcribe" },
         }),
       );
-    const api = createMeetMindApi("http://api.test/", fetchMock);
+    const api = createMeetMindApi("http://api.test/", { fetcher: fetchMock });
     const file = new File(["audio"], "standup.wav", { type: "audio/wav" });
 
     const meeting = await api.createMeeting({ title: "Upload flow" });
@@ -82,7 +82,7 @@ describe("MeetMind API client", () => {
         updated_at: "2026-06-29T08:30:00Z",
       }),
     );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const meeting = await api.publishMeeting("meeting-1");
 
@@ -97,7 +97,7 @@ describe("MeetMind API client", () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse({ detail: "Unsupported file type" }, { ok: false, status: 415 }),
     );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     await expect(api.listMeetings()).rejects.toMatchObject({
       status: 415,
@@ -145,7 +145,7 @@ describe("MeetMind API client", () => {
         ],
       }),
     );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const response = await api.askQuestion("meeting-1", {
       question: "Who owns rollout?",
@@ -191,7 +191,7 @@ describe("MeetMind API client", () => {
         },
       ]),
     );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const messages = await api.listQAMessages("meeting-1");
 
@@ -245,7 +245,7 @@ describe("MeetMind API client", () => {
           updated_at: "2026-06-29T08:05:00Z",
         }),
       );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const insight = await api.updateInsight("meeting-1", "insight-1", {
       title: "Updated decision",
@@ -335,7 +335,7 @@ describe("MeetMind API client", () => {
           created_at: "2026-06-29T08:05:00Z",
         }),
       );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const jobs = await api.listJobs("meeting-1");
     const structureResult = await api.runJob(jobs[0]);
@@ -401,7 +401,7 @@ describe("MeetMind API client", () => {
           },
         ]),
       );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const sections = await api.listSections("meeting-1");
     const actions = await api.listGlobalActionItems({ status: "confirmed" });
@@ -462,7 +462,7 @@ describe("MeetMind API client", () => {
           },
         ]),
       );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const search = await api.searchKnowledge({
       workspaceId: "workspace-a",
@@ -531,7 +531,7 @@ describe("MeetMind API client", () => {
           message: "Webhook task sync adapter is configured.",
         }),
       );
-    const api = createMeetMindApi("http://api.test", fetchMock);
+    const api = createMeetMindApi("http://api.test", { fetcher: fetchMock });
 
     const providerStatus = await api.getProviderStatus();
     const telemetry = await api.getProviderTelemetry();

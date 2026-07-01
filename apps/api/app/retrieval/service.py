@@ -86,9 +86,7 @@ def rebuild_meeting_embeddings(
                 metadata_json=source.metadata,
             ),
         )
-        source_counts[source.source_type] = (
-            source_counts.get(source.source_type, 0) + 1
-        )
+        source_counts[source.source_type] = source_counts.get(source.source_type, 0) + 1
 
     meeting.status = _status_after_embedding(previous_status)
     session.commit()
@@ -113,9 +111,7 @@ def ensure_meeting_embeddings(
     embedder: Embedder,
 ) -> None:
     get_meeting(session, meeting_id)
-    embedding_models = repository.list_embedding_models_for_meeting(
-        session, meeting_id
-    )
+    embedding_models = repository.list_embedding_models_for_meeting(session, meeting_id)
     if embedding_models != {embedder.model_name}:
         rebuild_meeting_embeddings(session, meeting_id, embedder=embedder)
 
@@ -177,9 +173,7 @@ def _collect_sources(session: Session, meeting_id: UUID) -> list[_EmbeddingSourc
             source_type=EmbeddingSourceType.MEETING_SECTION,
             source_id=section.id,
             text=" ".join(
-                item
-                for item in [section.title, section.summary or ""]
-                if item.strip()
+                item for item in [section.title, section.summary or ""] if item.strip()
             ),
             metadata={
                 "title": section.title,

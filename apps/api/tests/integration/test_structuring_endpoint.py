@@ -22,15 +22,17 @@ class EndpointExtractor:
         )
 
 
-def test_structuring_endpoint_uses_llm_provider_dependency() -> None:
+def test_structuring_endpoint_uses_llm_provider_dependency(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, segment_id, job_id = _create_meeting(client)
+    meeting_id, segment_id, job_id = _create_meeting(client, auth_headers)
     app.dependency_overrides[get_llm_extractor] = lambda: EndpointExtractor(
         _valid_extraction(segment_id)
     )
 
     try:
-        response = client.post(f"/api/jobs/{job_id}/structure")
+        response = client.post(f"/api/jobs/{job_id}/structure", headers=auth_headers)
     finally:
         app.dependency_overrides.clear()
 
@@ -43,8 +45,12 @@ def test_structuring_endpoint_uses_llm_provider_dependency() -> None:
     assert body["citations"][0]["segment_id"] == segment_id
 
 
-def _create_meeting(client: TestClient) -> tuple[str, str, UUID]:
-    meeting_response = client.post("/api/meetings", json={"title": "Endpoint"})
+def _create_meeting(
+    client: TestClient, auth_headers: dict[str, str]
+) -> tuple[str, str, UUID]:
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Endpoint"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     segment_response = client.post(
         f"/api/meetings/{meeting_id}/transcript",
@@ -53,10 +59,12 @@ def _create_meeting(client: TestClient) -> tuple[str, str, UUID]:
             "end_ms": 3000,
             "text": "Nina will publish the launch checklist tomorrow.",
         },
+        headers=auth_headers,
     )
     job_response = client.post(
         f"/api/meetings/{meeting_id}/process",
         json={"job_type": "structure", "provider": "endpoint-fake-llm"},
+        headers=auth_headers,
     )
     return meeting_id, segment_response.json()["id"], UUID(job_response.json()["id"])
 

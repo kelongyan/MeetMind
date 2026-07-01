@@ -8,7 +8,7 @@ from app.observability.provider_telemetry import observe_provider_call, reset_su
 
 
 def test_provider_status_reports_configuration_without_secrets(
-    monkeypatch,
+    monkeypatch, auth_headers: dict[str, str]
 ) -> None:
     monkeypatch.setattr(settings, "asr_provider", "openai")
     monkeypatch.setattr(settings, "llm_provider", "openai")
@@ -16,7 +16,9 @@ def test_provider_status_reports_configuration_without_secrets(
     monkeypatch.setattr(settings, "qa_answer_provider", "extractive")
     monkeypatch.setattr(settings, "openai_api_key", "sk-secret-value")
 
-    response = TestClient(app).get("/api/operations/provider-status")
+    response = TestClient(app).get(
+        "/api/operations/provider-status", headers=auth_headers
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -33,12 +35,14 @@ def test_provider_status_reports_configuration_without_secrets(
 
 
 def test_provider_status_marks_missing_openai_key_as_unconfigured(
-    monkeypatch,
+    monkeypatch, auth_headers: dict[str, str]
 ) -> None:
     monkeypatch.setattr(settings, "llm_provider", "openai")
     monkeypatch.setattr(settings, "openai_api_key", None)
 
-    response = TestClient(app).get("/api/operations/provider-status")
+    response = TestClient(app).get(
+        "/api/operations/provider-status", headers=auth_headers
+    )
 
     assert response.status_code == 200
     llm_status = next(
@@ -49,7 +53,7 @@ def test_provider_status_marks_missing_openai_key_as_unconfigured(
 
 
 def test_provider_telemetry_summary_counts_calls_latency_failures_and_cost(
-    caplog,
+    caplog, auth_headers: dict[str, str]
 ) -> None:
     reset_summary()
 
@@ -77,7 +81,9 @@ def test_provider_telemetry_summary_counts_calls_latency_failures_and_cost(
         except Exception:
             pass
 
-    response = TestClient(app).get("/api/operations/provider-telemetry")
+    response = TestClient(app).get(
+        "/api/operations/provider-telemetry", headers=auth_headers
+    )
 
     assert response.status_code == 200
     summary = response.json()["summaries"][0]
@@ -90,7 +96,7 @@ def test_provider_telemetry_summary_counts_calls_latency_failures_and_cost(
 
 
 def test_task_sync_status_exposes_adapter_boundary_without_webhook_secret(
-    monkeypatch,
+    monkeypatch, auth_headers: dict[str, str]
 ) -> None:
     monkeypatch.setattr(settings, "task_sync_provider", "webhook", raising=False)
     monkeypatch.setattr(
@@ -100,7 +106,7 @@ def test_task_sync_status_exposes_adapter_boundary_without_webhook_secret(
         raising=False,
     )
 
-    response = TestClient(app).get("/api/operations/task-sync")
+    response = TestClient(app).get("/api/operations/task-sync", headers=auth_headers)
 
     assert response.status_code == 200
     assert response.json() == {

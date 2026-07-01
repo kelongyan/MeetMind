@@ -1,0 +1,11 @@
+# ---- MeetMind Web .dockerignore ----
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.eslintcache
+doc/
+tests/

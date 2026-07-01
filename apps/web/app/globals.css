@@ -4,8 +4,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ---- MeetMind Design Tokens ---- */
-@theme inline {
+/* ------------------------------------------------------------------ */
+/*  Design Tokens – defined as CSS custom properties so they can be   */
+/*  overridden in .dark for theme switching.                          */
+/* ------------------------------------------------------------------ */
+
+:root {
+  /* MeetMind semantic tokens */
   --color-page: #F6F8FB;
   --color-surface: #FFFFFF;
   --color-surface-subtle: #F9FAFC;
@@ -31,9 +36,8 @@
   --color-danger-soft: #FEF2F2;
   --color-info: #1F5EFF;
   --color-info-soft: #EEF4FF;
-}
 
-:root {
+  /* shadcn / Radix tokens */
   color-scheme: light;
   --background: #F6F8FB;
   --foreground: #111827;
@@ -69,6 +73,107 @@
   --sidebar-border: #E3E8EF;
   --sidebar-ring: #1F5EFF;
 }
+
+/* ---- Dark mode overrides ---- */
+.dark {
+  color-scheme: dark;
+
+  /* Semantic tokens */
+  --color-page: #0B1120;
+  --color-surface: #111827;
+  --color-surface-subtle: #151D2E;
+  --color-muted-bg: #1E293B;
+  --color-border-default: #334155;
+  --color-border-strong: #475569;
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #CBD5E1;
+  --color-text-muted: #94A3B8;
+  --color-text-disabled: #64748B;
+  --color-brand-primary: #60A5FA;
+  --color-brand-hover: #93C5FD;
+  --color-brand-soft: #172554;
+  --color-brand-border: #1E3A5F;
+  --color-evidence: #22D3EE;
+  --color-evidence-soft: #083344;
+  --color-evidence-border: #155E75;
+  --color-success: #4ADE80;
+  --color-success-soft: #052E16;
+  --color-warning: #FBBF24;
+  --color-warning-soft: #451A03;
+  --color-danger: #F87171;
+  --color-danger-soft: #450A0A;
+  --color-info: #60A5FA;
+  --color-info-soft: #172554;
+
+  /* shadcn tokens */
+  --background: #0B1120;
+  --foreground: #F1F5F9;
+  --card: #111827;
+  --card-foreground: #F1F5F9;
+  --popover: #111827;
+  --popover-foreground: #F1F5F9;
+  --primary: #60A5FA;
+  --primary-foreground: #0B1120;
+  --secondary: #1E293B;
+  --secondary-foreground: #F1F5F9;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #172554;
+  --accent-foreground: #F1F5F9;
+  --destructive: #DC2626;
+  --destructive-foreground: #F1F5F9;
+  --border: #334155;
+  --input: #475569;
+  --ring: #60A5FA;
+  --chart-1: #60A5FA;
+  --chart-2: #22D3EE;
+  --chart-3: #4ADE80;
+  --chart-4: #FBBF24;
+  --chart-5: #F87171;
+  --sidebar: #111827;
+  --sidebar-foreground: #F1F5F9;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #0B1120;
+  --sidebar-accent: #172554;
+  --sidebar-accent-foreground: #F1F5F9;
+  --sidebar-border: #334155;
+  --sidebar-ring: #60A5FA;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tailwind v4 theme registration – reference the CSS variables so   */
+/*  they respond to .dark overrides.                                  */
+/* ------------------------------------------------------------------ */
+
+@theme inline {
+  --color-page: var(--color-page);
+  --color-surface: var(--color-surface);
+  --color-surface-subtle: var(--color-surface-subtle);
+  --color-muted-bg: var(--color-muted-bg);
+  --color-border-default: var(--color-border-default);
+  --color-border-strong: var(--color-border-strong);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-disabled: var(--color-text-disabled);
+  --color-brand-primary: var(--color-brand-primary);
+  --color-brand-hover: var(--color-brand-hover);
+  --color-brand-soft: var(--color-brand-soft);
+  --color-brand-border: var(--color-brand-border);
+  --color-evidence: var(--color-evidence);
+  --color-evidence-soft: var(--color-evidence-soft);
+  --color-evidence-border: var(--color-evidence-border);
+  --color-success: var(--color-success);
+  --color-success-soft: var(--color-success-soft);
+  --color-warning: var(--color-warning);
+  --color-warning-soft: var(--color-warning-soft);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-info: var(--color-info);
+  --color-info-soft: var(--color-info-soft);
+}
+
+/* ---- Base styles ---- */
 
 body {
   margin: 0;
@@ -139,6 +244,22 @@ html {
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ---- Accessibility: reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {

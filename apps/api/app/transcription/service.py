@@ -50,16 +50,32 @@ def create_segment(
     return segment
 
 
-def list_segments(session: Session, meeting_id: UUID) -> list[TranscriptSegment]:
+def list_segments(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 200
+) -> list[TranscriptSegment]:
     get_meeting(session, meeting_id)
-    return repository.list_segments(session, meeting_id)
+    return repository.list_segments(session, meeting_id, offset=offset, limit=limit)
 
 
-def list_sections(session: Session, meeting_id: UUID) -> list[MeetingSection]:
+def count_segments(session: Session, meeting_id: UUID) -> int:
     get_meeting(session, meeting_id)
-    sections = repository.list_sections(session, meeting_id)
+    return repository.count_segments(session, meeting_id)
+
+
+def list_sections(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[MeetingSection]:
+    get_meeting(session, meeting_id)
+    sections = repository.list_sections(session, meeting_id, offset=offset, limit=limit)
     if sections:
         return sections
+
+    # Auto-generate basic sections if none exist (only for first page).
+    if offset > 0:
+        return []
+    all_sections = repository.list_sections(session, meeting_id)
+    if all_sections:
+        return all_sections
 
     segments = repository.list_segments(session, meeting_id)
     if not segments:
@@ -72,6 +88,11 @@ def list_sections(session: Session, meeting_id: UUID) -> list[MeetingSection]:
     for section in sections:
         session.refresh(section)
     return sections
+
+
+def count_sections(session: Session, meeting_id: UUID) -> int:
+    get_meeting(session, meeting_id)
+    return repository.count_sections(session, meeting_id)
 
 
 def get_segment_for_meeting(

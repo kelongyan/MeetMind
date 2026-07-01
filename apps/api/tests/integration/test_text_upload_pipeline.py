@@ -44,10 +44,14 @@ class UploadedTranscriptExtractor:
         )
 
 
-def test_text_upload_imports_transcript_and_runs_structuring() -> None:
+def test_text_upload_imports_transcript_and_runs_structuring(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
     meeting_id = client.post(
-        "/api/meetings", json={"title": "Text import", "language": "en"}
+        "/api/meetings",
+        json={"title": "Text import", "language": "en"},
+        headers=auth_headers,
     ).json()["id"]
 
     upload_response = client.post(
@@ -59,22 +63,25 @@ def test_text_upload_imports_transcript_and_runs_structuring() -> None:
                 "text/plain",
             )
         },
+        headers=auth_headers,
     )
     job_id = upload_response.json()["job"]["id"]
-    transcript_response = client.get(f"/api/meetings/{meeting_id}/transcript")
-    app.dependency_overrides[get_llm_extractor] = (
-        lambda: UploadedTranscriptExtractor()
+    transcript_response = client.get(
+        f"/api/meetings/{meeting_id}/transcript", headers=auth_headers
     )
+    app.dependency_overrides[get_llm_extractor] = lambda: UploadedTranscriptExtractor()
 
     try:
-        structure_response = client.post(f"/api/jobs/{job_id}/structure")
+        structure_response = client.post(
+            f"/api/jobs/{job_id}/structure", headers=auth_headers
+        )
     finally:
         app.dependency_overrides.clear()
 
     assert upload_response.status_code == 201
     assert upload_response.json()["job"]["job_type"] == "structure"
     assert transcript_response.status_code == 200
-    transcript = transcript_response.json()
+    transcript = transcript_response.json()["items"]
     assert len(transcript) == 1
     assert transcript[0]["text"] == "Nina owns the rollout checklist before Friday."
     assert transcript[0]["start_ms"] == 0
@@ -86,14 +93,16 @@ def test_text_upload_imports_transcript_and_runs_structuring() -> None:
     assert body["citations"][0]["quote"] == transcript[0]["text"]
 
 
-def test_text_upload_can_auto_run_structuring_pipeline() -> None:
+def test_text_upload_can_auto_run_structuring_pipeline(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
     meeting_id = client.post(
-        "/api/meetings", json={"title": "Auto text import", "language": "en"}
+        "/api/meetings",
+        json={"title": "Auto text import", "language": "en"},
+        headers=auth_headers,
     ).json()["id"]
-    app.dependency_overrides[get_llm_extractor] = (
-        lambda: UploadedTranscriptExtractor()
-    )
+    app.dependency_overrides[get_llm_extractor] = lambda: UploadedTranscriptExtractor()
 
     try:
         upload_response = client.post(
@@ -105,6 +114,7 @@ def test_text_upload_can_auto_run_structuring_pipeline() -> None:
                     "text/plain",
                 )
             },
+            headers=auth_headers,
         )
     finally:
         app.dependency_overrides.clear()
@@ -114,21 +124,29 @@ def test_text_upload_can_auto_run_structuring_pipeline() -> None:
     assert body["job"]["job_type"] == "structure"
     assert body["job"]["status"] == "succeeded"
 
-    meeting_response = client.get(f"/api/meetings/{meeting_id}")
-    action_items_response = client.get(f"/api/meetings/{meeting_id}/action-items")
-    citations_response = client.get(f"/api/meetings/{meeting_id}/citations")
+    meeting_response = client.get(f"/api/meetings/{meeting_id}", headers=auth_headers)
+    action_items_response = client.get(
+        f"/api/meetings/{meeting_id}/action-items", headers=auth_headers
+    )
+    citations_response = client.get(
+        f"/api/meetings/{meeting_id}/citations", headers=auth_headers
+    )
 
     assert meeting_response.json()["status"] == "ready_for_review"
-    assert action_items_response.json()[0]["owner_text"] == "Nina"
-    assert citations_response.json()[0]["quote"] == (
+    assert action_items_response.json()["items"][0]["owner_text"] == "Nina"
+    assert citations_response.json()["items"][0]["quote"] == (
         "Nina owns the rollout checklist before Friday."
     )
 
 
-def test_vtt_upload_imports_timed_transcript_segments() -> None:
+def test_vtt_upload_imports_timed_transcript_segments(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
     meeting_id = client.post(
-        "/api/meetings", json={"title": "VTT import", "language": "en"}
+        "/api/meetings",
+        json={"title": "VTT import", "language": "en"},
+        headers=auth_headers,
     ).json()["id"]
 
     upload_response = client.post(
@@ -140,11 +158,14 @@ def test_vtt_upload_imports_timed_transcript_segments() -> None:
                 "text/vtt",
             )
         },
+        headers=auth_headers,
     )
-    transcript_response = client.get(f"/api/meetings/{meeting_id}/transcript")
+    transcript_response = client.get(
+        f"/api/meetings/{meeting_id}/transcript", headers=auth_headers
+    )
 
     assert upload_response.status_code == 201
-    transcript = transcript_response.json()
+    transcript = transcript_response.json()["items"]
     assert len(transcript) == 1
     assert transcript[0]["start_ms"] == 1000
     assert transcript[0]["end_ms"] == 3500

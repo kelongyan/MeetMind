@@ -18,15 +18,29 @@ import {
   ChevronRight,
   FileAudio,
   Loader2,
-  Settings,
+  Settings2,
   UploadCloud,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import type { ProcessingJob } from "@/features/meetings/types";
 import type { LoadState } from "@/features/meetings/components/shared/load-state";
 import { StatusNote } from "@/features/meetings/components/shared/status-note";
+import type { ActiveView } from "./app-shell";
+
+const NAV_ITEMS: Array<{
+  view: ActiveView;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}> = [
+  { view: "meetings", icon: FileAudio, label: "会议" },
+  { view: "knowledge", icon: BookOpen, label: "知识库" },
+  { view: "action-items", icon: CheckSquare, label: "行动项" },
+  { view: "operations", icon: Settings2, label: "运维" },
+];
 
 export function AppSidebar({
+  activeView,
+  onViewChange,
   title,
   language,
   uploadState,
@@ -37,6 +51,8 @@ export function AppSidebar({
   onFileChange,
   onSubmitUpload,
 }: {
+  activeView: ActiveView;
+  onViewChange: (view: ActiveView) => void;
   title: string;
   language: string;
   file: File | null;
@@ -60,25 +76,25 @@ export function AppSidebar({
     <aside className="h-full overflow-y-auto border-b border-border bg-surface md:border-b-0 md:border-r">
       <div className="space-y-5 p-4">
         <div className="rounded-lg border border-brand-border bg-brand-soft p-3">
-          <p className="text-sm font-semibold text-brand-primary">单会议可信闭环</p>
+          <p className="text-sm font-semibold text-brand-primary">
+            单会议可信闭环
+          </p>
           <p className="mt-1 text-xs leading-5 text-text-secondary">
             上传、转写、提取行动项，并用引用回到原始发言。
           </p>
         </div>
 
-        <nav aria-label="主导航" className="space-y-1">
-          <SidebarNavItem href="#meetings" icon={FileAudio} active>
-            会议
-          </SidebarNavItem>
-          <SidebarNavItem href="#knowledge" icon={BookOpen} disabled>
-            知识库
-          </SidebarNavItem>
-          <SidebarNavItem href="#action-items" icon={CheckSquare} disabled>
-            行动项
-          </SidebarNavItem>
-          <SidebarNavItem href="#settings" icon={Settings} disabled>
-            设置
-          </SidebarNavItem>
+        <nav aria-label="主导航" role="tablist" className="space-y-1">
+          {NAV_ITEMS.map((item) => (
+            <SidebarNavItem
+              key={item.view}
+              icon={item.icon}
+              active={activeView === item.view}
+              onClick={() => onViewChange(item.view)}
+            >
+              {item.label}
+            </SidebarNavItem>
+          ))}
         </nav>
 
         <div>
@@ -97,7 +113,10 @@ export function AppSidebar({
             </span>
             <div className="flex items-center gap-2">
               {uploadState === "loading" ? (
-                <Loader2 className="h-4 w-4 animate-spin text-brand-primary" aria-label="上传中" />
+                <Loader2
+                  className="h-4 w-4 animate-spin text-brand-primary"
+                  aria-label="上传中"
+                />
               ) : null}
               {uploadExpanded ? (
                 <ChevronDown className="h-4 w-4 text-text-muted" />
@@ -125,7 +144,10 @@ export function AppSidebar({
                 <Label htmlFor="meeting-language" className="text-sm">
                   语言
                 </Label>
-                <Select value={language} onValueChange={(value) => onLanguageChange(value ?? "zh-CN")}>
+                <Select
+                  value={language}
+                  onValueChange={(value) => onLanguageChange(value ?? "zh-CN")}
+                >
                   <SelectTrigger id="meeting-language">
                     <SelectValue />
                   </SelectTrigger>
@@ -166,7 +188,9 @@ export function AppSidebar({
 
               {lastUploadJob ? (
                 <div className="rounded-md border border-brand-border bg-brand-soft p-3 text-xs text-brand-primary">
-                  <div className="font-semibold">处理任务：{lastUploadJob.status}</div>
+                  <div className="font-semibold">
+                    处理任务：{lastUploadJob.status}
+                  </div>
                   <div className="mt-1">
                     {lastUploadJob.job_type} · {lastUploadJob.id}
                   </div>
@@ -181,36 +205,31 @@ export function AppSidebar({
 }
 
 function SidebarNavItem({
-  href,
   icon: Icon,
   active,
-  disabled,
+  onClick,
   children,
 }: {
-  href: string;
   icon: React.ComponentType<{ className?: string }>;
   active?: boolean;
-  disabled?: boolean;
+  onClick: () => void;
   children: ReactNode;
 }) {
   return (
-    <a
-      href={href}
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
       className={[
-        "flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
+        "flex h-10 w-full items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
         active
           ? "bg-brand-soft text-brand-primary ring-1 ring-brand-border"
-          : disabled
-            ? "cursor-not-allowed text-text-disabled opacity-50"
-            : "text-text-secondary hover:bg-muted hover:text-text-primary",
+          : "text-text-secondary hover:bg-muted hover:text-text-primary",
       ].join(" ")}
-      onClick={(e) => {
-        if (disabled) e.preventDefault();
-      }}
-      aria-disabled={disabled}
+      onClick={onClick}
     >
       <Icon className="h-4 w-4" aria-hidden="true" />
       {children}
-    </a>
+    </button>
   );
 }

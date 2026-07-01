@@ -20,6 +20,7 @@ from app.db.models import (
     InsightType,
     JobStatus,
     JobType,
+    MeetingSection,
     MeetingStatus,
     ProcessingJob,
     TranscriptSegment,
@@ -54,6 +55,7 @@ class StructuringRunResult:
     insights: list[InsightItem]
     action_items: list[ActionItem]
     citations: list[Citation]
+    sections: list[MeetingSection]
 
 
 @dataclass(frozen=True)
@@ -130,18 +132,15 @@ def run_structuring_job(
                 if attempt == 1:
                     raise
                 retry_instruction = (
-                    "Previous output failed JSON/schema/citation validation: "
-                    f"{exc}"
+                    f"Previous output failed JSON/schema/citation validation: {exc}"
                 )
 
         if response is None or extraction is None:
             raise last_error or StructuringValidationError("structuring failed")
 
-        repository.delete_generated_outputs(
-            session, meeting.id, prompt_version=version
-        )
+        repository.delete_generated_outputs(session, meeting.id, prompt_version=version)
         delete_embeddings_for_meeting(session, meeting.id)
-        insights, action_items, citations = _persist_extraction(
+        insights, action_items, citations, sections = _persist_extraction(
             session,
             job.meeting_id,
             extraction,
@@ -156,12 +155,13 @@ def run_structuring_job(
         job.finished_at = datetime.now(UTC)
         meeting.status = MeetingStatus.READY_FOR_REVIEW
         session.commit()
-        _refresh_all(session, [job, *insights, *action_items, *citations])
+        _refresh_all(session, [job, *insights, *action_items, *citations, *sections])
         return StructuringRunResult(
             job=job,
             insights=insights,
             action_items=action_items,
             citations=citations,
+            sections=sections,
         )
     except Exception as exc:
         session.rollback()
@@ -228,6 +228,17 @@ def _validate_extraction(
 ) -> None:
     segments_by_id = {segment.id: segment for segment in segments}
 
+    for section in extraction.sections:
+        if section.start_segment_id not in segments_by_id:
+            raise StructuringValidationError(
+                "section references unknown start_segment_id"
+                f" {section.start_segment_id}"
+            )
+        if section.end_segment_id not in segments_by_id:
+            raise StructuringValidationError(
+                f"section references unknown end_segment_id {section.end_segment_id}"
+            )
+
     for insight in _iter_insights(extraction):
         if not insight.citations:
             raise StructuringValidationError(
@@ -254,11 +265,31 @@ def _persist_extraction(
     model_name: str,
     model_version: str | None,
     prompt_version: str,
-) -> tuple[list[InsightItem], list[ActionItem], list[Citation]]:
+) -> tuple[list[InsightItem], list[ActionItem], list[Citation], list[MeetingSection]]:
     segments_by_id = {segment.id: segment for segment in segments}
     insights: list[InsightItem] = []
     action_items: list[ActionItem] = []
     citations: list[Citation] = []
+
+    # Persist LLM-identified sections.
+    from app.transcription.repository import delete_sections_for_meeting
+
+    delete_sections_for_meeting(session, meeting_id)
+    sections: list[MeetingSection] = []
+    for section_draft in extraction.sections:
+        start_seg = segments_by_id[section_draft.start_segment_id]
+        end_seg = segments_by_id[section_draft.end_segment_id]
+        section = MeetingSection(
+            meeting_id=meeting_id,
+            title=section_draft.title,
+            summary=section_draft.summary,
+            start_ms=start_seg.start_ms,
+            end_ms=end_seg.end_ms,
+            topic_tags=section_draft.topic_tags,
+        )
+        repository.create_section(session, section)
+        session.flush()
+        sections.append(section)
 
     for draft in _iter_insights(extraction):
         insight = InsightItem(
@@ -314,7 +345,7 @@ def _persist_extraction(
             )
         )
 
-    return insights, action_items, citations
+    return insights, action_items, citations, sections
 
 
 def _iter_insights(

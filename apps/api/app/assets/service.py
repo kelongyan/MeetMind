@@ -16,7 +16,7 @@ from app.db.models import (
     ProcessingJob,
     TranscriptSegment,
 )
-from app.exceptions import InvalidFileTypeError, NotFoundError
+from app.exceptions import FileTooLargeError, InvalidFileTypeError, NotFoundError
 from app.jobs.repository import create_job
 from app.meetings.service import get_meeting
 from app.object_storage.local import LocalObjectStorage
@@ -47,6 +47,10 @@ async def upload_asset(
     session: Session, meeting_id: UUID, upload: UploadFile
 ) -> AssetUploadResult:
     get_meeting(session, meeting_id)
+    # Enforce maximum upload size.
+    if upload.size is not None and upload.size > settings.upload_max_size_bytes:
+        max_mb = settings.upload_max_size_bytes // (1024 * 1024)
+        raise FileTooLargeError(f"File size exceeds the maximum of {max_mb} MB")
     suffix = _validate_file_suffix(upload.filename)
     asset_type = ALLOWED_SUFFIXES[suffix]
     storage = LocalObjectStorage(settings.upload_storage_dir)
@@ -104,9 +108,16 @@ async def upload_asset(
     return AssetUploadResult(asset=asset, job=job, duplicate=False)
 
 
-def list_assets(session: Session, meeting_id: UUID) -> list[MeetingAsset]:
+def list_assets(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[MeetingAsset]:
     get_meeting(session, meeting_id)
-    return repository.list_assets(session, meeting_id)
+    return repository.list_assets(session, meeting_id, offset=offset, limit=limit)
+
+
+def count_assets(session: Session, meeting_id: UUID) -> int:
+    get_meeting(session, meeting_id)
+    return repository.count_assets(session, meeting_id)
 
 
 def delete_asset(session: Session, asset_id: UUID) -> None:

@@ -17,5 +17,6 @@ def get_embedder() -> Embedder:
         return OpenAIEmbedder(
             api_key=settings.openai_api_key,
             model=settings.openai_embedding_model,
+            base_url=settings.openai_base_url,
         )
     raise ConflictError("Embedding provider is disabled")

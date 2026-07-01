@@ -3,13 +3,18 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_update_job_failure_and_retry_without_duplicate_asset() -> None:
+def test_update_job_failure_and_retry_without_duplicate_asset(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "Retry"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Retry"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     upload_response = client.post(
         f"/api/meetings/{meeting_id}/assets",
         files={"file": ("retry.wav", b"fake wave", "audio/wav")},
+        headers=auth_headers,
     )
     asset_id = upload_response.json()["asset"]["id"]
     job_id = upload_response.json()["job"]["id"]
@@ -17,6 +22,7 @@ def test_update_job_failure_and_retry_without_duplicate_asset() -> None:
     running_response = client.patch(
         f"/api/jobs/{job_id}",
         json={"status": "running", "progress": 40},
+        headers=auth_headers,
     )
     assert running_response.status_code == 200
     assert running_response.json()["status"] == "running"
@@ -31,6 +37,7 @@ def test_update_job_failure_and_retry_without_duplicate_asset() -> None:
             "failure_code": "asr_timeout",
             "failure_message": "The local worker timed out.",
         },
+        headers=auth_headers,
     )
     assert failed_response.status_code == 200
     assert failed_response.json()["status"] == "failed"
@@ -39,7 +46,7 @@ def test_update_job_failure_and_retry_without_duplicate_asset() -> None:
     assert failed_response.json()["failure_code"] == "asr_timeout"
     assert failed_response.json()["failure_message"] == "The local worker timed out."
 
-    retry_response = client.post(f"/api/jobs/{job_id}/retry")
+    retry_response = client.post(f"/api/jobs/{job_id}/retry", headers=auth_headers)
 
     assert retry_response.status_code == 201
     retry_job = retry_response.json()
@@ -52,17 +59,24 @@ def test_update_job_failure_and_retry_without_duplicate_asset() -> None:
     assert retry_job["failure_code"] is None
     assert retry_job["failure_message"] is None
 
-    assets_response = client.get(f"/api/meetings/{meeting_id}/assets")
-    assert [asset["id"] for asset in assets_response.json()] == [asset_id]
+    assets_response = client.get(
+        f"/api/meetings/{meeting_id}/assets", headers=auth_headers
+    )
+    assert [asset["id"] for asset in assets_response.json()["items"]] == [asset_id]
 
 
-def test_non_retryable_failed_job_cannot_be_retried() -> None:
+def test_non_retryable_failed_job_cannot_be_retried(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "No retry"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "No retry"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     job_response = client.post(
         f"/api/meetings/{meeting_id}/process",
         json={"job_type": "structure"},
+        headers=auth_headers,
     )
     job_id = job_response.json()["id"]
     client.patch(
@@ -73,24 +87,32 @@ def test_non_retryable_failed_job_cannot_be_retried() -> None:
             "failure_code": "unsupported_media",
             "failure_message": "The media format cannot be processed.",
         },
+        headers=auth_headers,
     )
 
-    response = client.post(f"/api/jobs/{job_id}/retry")
+    response = client.post(f"/api/jobs/{job_id}/retry", headers=auth_headers)
 
     assert response.status_code == 409
     assert response.json()["detail"] == "Job is marked as non-retryable"
 
 
-def test_failed_job_requires_failure_code_and_message() -> None:
+def test_failed_job_requires_failure_code_and_message(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_response = client.post("/api/meetings", json={"title": "Failure"})
+    meeting_response = client.post(
+        "/api/meetings", json={"title": "Failure"}, headers=auth_headers
+    )
     meeting_id = meeting_response.json()["id"]
     job_response = client.post(
         f"/api/meetings/{meeting_id}/process",
         json={"job_type": "structure"},
+        headers=auth_headers,
     )
     job_id = job_response.json()["id"]
 
-    response = client.patch(f"/api/jobs/{job_id}", json={"status": "failed"})
+    response = client.patch(
+        f"/api/jobs/{job_id}", json={"status": "failed"}, headers=auth_headers
+    )
 
     assert response.status_code == 422

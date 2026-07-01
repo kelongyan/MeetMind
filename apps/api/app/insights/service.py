@@ -56,9 +56,16 @@ def create_insight(
     return insight
 
 
-def list_insights(session: Session, meeting_id: UUID) -> list[InsightItem]:
+def list_insights(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[InsightItem]:
     get_meeting(session, meeting_id)
-    return repository.list_insights(session, meeting_id)
+    return repository.list_insights(session, meeting_id, offset=offset, limit=limit)
+
+
+def count_insights(session: Session, meeting_id: UUID) -> int:
+    get_meeting(session, meeting_id)
+    return repository.count_insights(session, meeting_id)
 
 
 def update_insight(
@@ -91,9 +98,16 @@ def create_action_item(
     return action_item
 
 
-def list_action_items(session: Session, meeting_id: UUID) -> list[ActionItem]:
+def list_action_items(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[ActionItem]:
     get_meeting(session, meeting_id)
-    return repository.list_action_items(session, meeting_id)
+    return repository.list_action_items(session, meeting_id, offset=offset, limit=limit)
+
+
+def count_action_items(session: Session, meeting_id: UUID) -> int:
+    get_meeting(session, meeting_id)
+    return repository.count_action_items(session, meeting_id)
 
 
 def update_action_item(
@@ -132,9 +146,16 @@ def create_citation(
     return citation
 
 
-def list_citations(session: Session, meeting_id: UUID) -> list[Citation]:
+def list_citations(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[Citation]:
     get_meeting(session, meeting_id)
-    return repository.list_citations(session, meeting_id)
+    return repository.list_citations(session, meeting_id, offset=offset, limit=limit)
+
+
+def count_citations(session: Session, meeting_id: UUID) -> int:
+    get_meeting(session, meeting_id)
+    return repository.count_citations(session, meeting_id)
 
 
 def _ensure_target_belongs_to_meeting(
@@ -208,9 +229,7 @@ def _apply_action_item_status(
     if next_status == ActionItemStatus.CONFIRMED:
         confirmed_by = payload.confirmed_by_user_id or action_item.confirmed_by_user_id
         if not confirmed_by:
-            raise ConflictError(
-                "confirmed action items require confirmed_by_user_id"
-            )
+            raise ConflictError("confirmed action items require confirmed_by_user_id")
         action_item.confirmed_by_user_id = confirmed_by
         action_item.confirmed_at = action_item.confirmed_at or datetime.now(UTC)
 

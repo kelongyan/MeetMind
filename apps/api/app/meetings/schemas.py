@@ -21,7 +21,6 @@ class MeetingUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     language: str | None = None
-    status: MeetingStatus | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
     duration_ms: int | None = Field(default=None, ge=0)

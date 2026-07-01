@@ -10,6 +10,7 @@ from app.db.models import (
     CitationTargetType,
     InsightItem,
     InsightStatus,
+    MeetingSection,
 )
 
 
@@ -26,6 +27,11 @@ def create_action_item(session: Session, action_item: ActionItem) -> ActionItem:
 def create_citation(session: Session, citation: Citation) -> Citation:
     session.add(citation)
     return citation
+
+
+def create_section(session: Session, section: MeetingSection) -> MeetingSection:
+    session.add(section)
+    return section
 
 
 def delete_generated_outputs(

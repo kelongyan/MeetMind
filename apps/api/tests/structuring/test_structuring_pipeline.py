@@ -50,9 +50,13 @@ class KeywordEmbedder:
         return EmbeddingResponse(vectors=vectors, model_name=self.model_name)
 
 
-def test_run_structuring_job_writes_proposed_outputs_and_citations() -> None:
+def test_run_structuring_job_writes_proposed_outputs_and_citations(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, segment_ids, job_id = _create_meeting_with_structure_job(client)
+    meeting_id, segment_ids, job_id = _create_meeting_with_structure_job(
+        client, auth_headers
+    )
     extractor = FakeExtractor([_valid_extraction(segment_ids)])
 
     with SessionLocal() as session:
@@ -65,32 +69,40 @@ def test_run_structuring_job_writes_proposed_outputs_and_citations() -> None:
     assert len(result.action_items) == 1
     assert len(result.citations) == 5
     assert {item.status for item in result.insights} == {"proposed"}
-    assert {item.prompt_version for item in result.insights} == {
-        "phase4-structure-v1"
-    }
-    assert {item.model_name for item in result.insights} == {
-        "fake-structure-model"
-    }
+    assert {item.prompt_version for item in result.insights} == {"phase4-structure-v1"}
+    assert {item.model_name for item in result.insights} == {"fake-structure-model"}
     assert result.action_items[0].status == "proposed"
     assert result.action_items[0].created_by_ai is True
     assert result.action_items[0].prompt_version == "phase4-structure-v1"
     assert result.action_items[0].model_name == "fake-structure-model"
 
-    meeting_response = client.get(f"/api/meetings/{meeting_id}")
-    insights_response = client.get(f"/api/meetings/{meeting_id}/insights")
-    actions_response = client.get(f"/api/meetings/{meeting_id}/action-items")
-    citations_response = client.get(f"/api/meetings/{meeting_id}/citations")
+    meeting_response = client.get(f"/api/meetings/{meeting_id}", headers=auth_headers)
+    insights_response = client.get(
+        f"/api/meetings/{meeting_id}/insights", headers=auth_headers
+    )
+    actions_response = client.get(
+        f"/api/meetings/{meeting_id}/action-items", headers=auth_headers
+    )
+    citations_response = client.get(
+        f"/api/meetings/{meeting_id}/citations", headers=auth_headers
+    )
 
     assert meeting_response.json()["status"] == "ready_for_review"
-    assert len(insights_response.json()) == 4
-    assert len(actions_response.json()) == 1
-    assert len(citations_response.json()) == 5
-    assert actions_response.json()[0]["prompt_version"] == "phase4-structure-v1"
+    assert len(insights_response.json()["items"]) == 4
+    assert len(actions_response.json()["items"]) == 1
+    assert len(citations_response.json()["items"]) == 5
+    assert (
+        actions_response.json()["items"][0]["prompt_version"] == "phase4-structure-v1"
+    )
 
 
-def test_invalid_llm_json_retries_once_before_persisting_outputs() -> None:
+def test_invalid_llm_json_retries_once_before_persisting_outputs(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, segment_ids, job_id = _create_meeting_with_structure_job(client)
+    meeting_id, segment_ids, job_id = _create_meeting_with_structure_job(
+        client, auth_headers
+    )
     extractor = FakeExtractor(["{not valid json", _valid_extraction(segment_ids)])
 
     with SessionLocal() as session:
@@ -100,39 +112,56 @@ def test_invalid_llm_json_retries_once_before_persisting_outputs() -> None:
     assert len(extractor.calls) == 2
     retry_request = extractor.calls[1]
     assert "JSON" in retry_request.retry_instruction
-    assert client.get(f"/api/meetings/{meeting_id}/action-items").json()[0][
-        "description"
-    ] == "Prepare the migration plan."
+    assert (
+        client.get(
+            f"/api/meetings/{meeting_id}/action-items", headers=auth_headers
+        ).json()["items"][0]["description"]
+        == "Prepare the migration plan."
+    )
 
 
-def test_missing_required_citation_fails_job_without_partial_outputs() -> None:
+def test_missing_required_citation_fails_job_without_partial_outputs(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, _segment_ids, job_id = _create_meeting_with_structure_job(client)
+    meeting_id, _segment_ids, job_id = _create_meeting_with_structure_job(
+        client, auth_headers
+    )
     extractor = FakeExtractor([_missing_citation_extraction()])
 
     with SessionLocal() as session:
         with pytest.raises(Exception, match="citation"):
             service.run_structuring_job(session, job_id, extractor=extractor)
 
-    job_response = client.get(f"/api/jobs/{job_id}")
-    meeting_response = client.get(f"/api/meetings/{meeting_id}")
-    insights_response = client.get(f"/api/meetings/{meeting_id}/insights")
-    actions_response = client.get(f"/api/meetings/{meeting_id}/action-items")
-    citations_response = client.get(f"/api/meetings/{meeting_id}/citations")
+    job_response = client.get(f"/api/jobs/{job_id}", headers=auth_headers)
+    meeting_response = client.get(f"/api/meetings/{meeting_id}", headers=auth_headers)
+    insights_response = client.get(
+        f"/api/meetings/{meeting_id}/insights", headers=auth_headers
+    )
+    actions_response = client.get(
+        f"/api/meetings/{meeting_id}/action-items", headers=auth_headers
+    )
+    citations_response = client.get(
+        f"/api/meetings/{meeting_id}/citations", headers=auth_headers
+    )
 
     assert len(extractor.calls) == 2
     assert job_response.json()["status"] == "failed"
     assert job_response.json()["failure_code"] == "structuring_failed"
     assert "citation" in job_response.json()["failure_message"]
     assert meeting_response.json()["status"] == "failed_structuring"
-    assert insights_response.json() == []
-    assert actions_response.json() == []
-    assert citations_response.json() == []
+    assert insights_response.json()["items"] == []
+    assert actions_response.json()["items"] == []
+    assert citations_response.json()["items"] == []
 
 
-def test_repeated_structuring_run_replaces_previous_generated_results() -> None:
+def test_repeated_structuring_run_replaces_previous_generated_results(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, segment_ids, first_job_id = _create_meeting_with_structure_job(client)
+    meeting_id, segment_ids, first_job_id = _create_meeting_with_structure_job(
+        client, auth_headers
+    )
 
     with SessionLocal() as session:
         service.run_structuring_job(
@@ -144,6 +173,7 @@ def test_repeated_structuring_run_replaces_previous_generated_results() -> None:
     second_job_response = client.post(
         f"/api/meetings/{meeting_id}/process",
         json={"job_type": "structure", "provider": "fake-llm"},
+        headers=auth_headers,
     )
     second_job_id = UUID(second_job_response.json()["id"])
 
@@ -154,14 +184,39 @@ def test_repeated_structuring_run_replaces_previous_generated_results() -> None:
             extractor=FakeExtractor([_valid_extraction(segment_ids)]),
         )
 
-    assert len(client.get(f"/api/meetings/{meeting_id}/insights").json()) == 4
-    assert len(client.get(f"/api/meetings/{meeting_id}/action-items").json()) == 1
-    assert len(client.get(f"/api/meetings/{meeting_id}/citations").json()) == 5
+    assert (
+        len(
+            client.get(
+                f"/api/meetings/{meeting_id}/insights", headers=auth_headers
+            ).json()["items"]
+        )
+        == 4
+    )
+    assert (
+        len(
+            client.get(
+                f"/api/meetings/{meeting_id}/action-items", headers=auth_headers
+            ).json()["items"]
+        )
+        == 1
+    )
+    assert (
+        len(
+            client.get(
+                f"/api/meetings/{meeting_id}/citations", headers=auth_headers
+            ).json()["items"]
+        )
+        == 5
+    )
 
 
-def test_structuring_outputs_after_embedding_build_are_searchable() -> None:
+def test_structuring_outputs_after_embedding_build_are_searchable(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id, segment_ids, job_id = _create_meeting_with_structure_job(client)
+    meeting_id, segment_ids, job_id = _create_meeting_with_structure_job(
+        client, auth_headers
+    )
     embedder = KeywordEmbedder()
 
     with SessionLocal() as session:
@@ -188,10 +243,12 @@ def test_structuring_outputs_after_embedding_build_are_searchable() -> None:
 
 def _create_meeting_with_structure_job(
     client: TestClient,
+    auth_headers: dict[str, str],
 ) -> tuple[str, list[str], UUID]:
     meeting_response = client.post(
         "/api/meetings",
         json={"title": "Phase 4 planning", "language": "en"},
+        headers=auth_headers,
     )
     meeting_id = meeting_response.json()["id"]
     first_segment = client.post(
@@ -202,6 +259,7 @@ def _create_meeting_with_structure_job(
             "text": "We decided to use PostgreSQL for the first release.",
             "confidence": 0.94,
         },
+        headers=auth_headers,
     ).json()
     second_segment = client.post(
         f"/api/meetings/{meeting_id}/transcript",
@@ -214,13 +272,17 @@ def _create_meeting_with_structure_job(
             ),
             "confidence": 0.91,
         },
+        headers=auth_headers,
     ).json()
     job_response = client.post(
         f"/api/meetings/{meeting_id}/process",
         json={"job_type": "structure", "provider": "fake-llm"},
+        headers=auth_headers,
     )
-    return meeting_id, [first_segment["id"], second_segment["id"]], UUID(
-        job_response.json()["id"]
+    return (
+        meeting_id,
+        [first_segment["id"], second_segment["id"]],
+        UUID(job_response.json()["id"]),
     )
 
 

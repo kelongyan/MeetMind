@@ -24,6 +24,7 @@ export const DEFAULT_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 type FetchLike = typeof fetch;
+type GetAuthToken = () => string | null | Promise<string | null>;
 
 export class ApiError extends Error {
   constructor(
@@ -124,14 +125,28 @@ export interface MeetMindApi {
   loadMeetingDetail(meetingId: string): Promise<MeetingDetailData>;
 }
 
+export interface CreateApiOptions {
+  fetcher?: FetchLike;
+  getAuthToken?: GetAuthToken;
+}
+
 export function createMeetMindApi(
   baseUrl = DEFAULT_API_BASE_URL,
-  fetcher: FetchLike = fetch,
+  options: CreateApiOptions = {},
 ): MeetMindApi {
+  const fetcher = options.fetcher ?? fetch;
+  const getAuthToken = options.getAuthToken;
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
 
   async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const headers = { Accept: "application/json", ...init?.headers };
+    const authHeaders: Record<string, string> = {};
+    if (getAuthToken) {
+      const token = await getAuthToken();
+      if (token) {
+        authHeaders["Authorization"] = `Bearer ${token}`;
+      }
+    }
+    const headers = { Accept: "application/json", ...authHeaders, ...init?.headers };
     const response = await fetcher(`${normalizedBaseUrl}${path}`, {
       ...init,
       headers,

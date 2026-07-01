@@ -3,11 +3,13 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_update_insight_edits_content_and_dismisses_without_losing_citation() -> None:
+def test_update_insight_edits_content_and_dismisses_without_losing_citation(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
-    meeting_id = client.post("/api/meetings", json={"title": "Insight review"}).json()[
-        "id"
-    ]
+    meeting_id = client.post(
+        "/api/meetings", json={"title": "Insight review"}, headers=auth_headers
+    ).json()["id"]
     segment = client.post(
         f"/api/meetings/{meeting_id}/transcript",
         json={
@@ -16,6 +18,7 @@ def test_update_insight_edits_content_and_dismisses_without_losing_citation() ->
             "text": "The team decided to keep the beta scope narrow.",
             "confidence": 0.93,
         },
+        headers=auth_headers,
     ).json()
     insight = client.post(
         f"/api/meetings/{meeting_id}/insights",
@@ -25,6 +28,7 @@ def test_update_insight_edits_content_and_dismisses_without_losing_citation() ->
             "body": "The beta scope is narrow.",
             "confidence": 0.86,
         },
+        headers=auth_headers,
     ).json()
     client.post(
         f"/api/meetings/{meeting_id}/citations",
@@ -37,6 +41,7 @@ def test_update_insight_edits_content_and_dismisses_without_losing_citation() ->
             "quote": "The team decided to keep the beta scope narrow.",
             "confidence": 0.9,
         },
+        headers=auth_headers,
     )
 
     response = client.patch(
@@ -46,8 +51,11 @@ def test_update_insight_edits_content_and_dismisses_without_losing_citation() ->
             "body": "The team confirmed a narrow beta scope.",
             "status": "dismissed",
         },
+        headers=auth_headers,
     )
-    citations = client.get(f"/api/meetings/{meeting_id}/citations").json()
+    citations = client.get(
+        f"/api/meetings/{meeting_id}/citations", headers=auth_headers
+    ).json()["items"]
 
     assert response.status_code == 200
     assert response.json()["title"] == "Beta scope confirmed"

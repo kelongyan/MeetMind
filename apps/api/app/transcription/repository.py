@@ -11,13 +11,30 @@ def create_segment(session: Session, segment: TranscriptSegment) -> TranscriptSe
     return segment
 
 
-def list_segments(session: Session, meeting_id: UUID) -> list[TranscriptSegment]:
+def list_segments(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 200
+) -> list[TranscriptSegment]:
     return list(
         session.scalars(
             select(TranscriptSegment)
             .where(TranscriptSegment.meeting_id == meeting_id)
             .order_by(TranscriptSegment.start_ms, TranscriptSegment.id)
+            .offset(offset)
+            .limit(limit)
         )
+    )
+
+
+def count_segments(session: Session, meeting_id: UUID) -> int:
+    from sqlalchemy import func
+
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(TranscriptSegment)
+            .where(TranscriptSegment.meeting_id == meeting_id)
+        )
+        or 0
     )
 
 
@@ -30,13 +47,30 @@ def create_section(session: Session, section: MeetingSection) -> MeetingSection:
     return section
 
 
-def list_sections(session: Session, meeting_id: UUID) -> list[MeetingSection]:
+def list_sections(
+    session: Session, meeting_id: UUID, *, offset: int = 0, limit: int = 50
+) -> list[MeetingSection]:
     return list(
         session.scalars(
             select(MeetingSection)
             .where(MeetingSection.meeting_id == meeting_id)
             .order_by(MeetingSection.start_ms, MeetingSection.id)
+            .offset(offset)
+            .limit(limit)
         )
+    )
+
+
+def count_sections(session: Session, meeting_id: UUID) -> int:
+    from sqlalchemy import func
+
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(MeetingSection)
+            .where(MeetingSection.meeting_id == meeting_id)
+        )
+        or 0
     )
 
 

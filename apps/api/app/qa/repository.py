@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import Citation, QAMessage
@@ -19,7 +19,12 @@ def create_citation(session: Session, citation: Citation) -> Citation:
 
 
 def list_messages(
-    session: Session, meeting_id: UUID, conversation_id: UUID | None = None
+    session: Session,
+    meeting_id: UUID,
+    conversation_id: UUID | None = None,
+    *,
+    offset: int = 0,
+    limit: int = 50,
 ) -> list[QAMessage]:
     query = (
         select(QAMessage)
@@ -28,4 +33,19 @@ def list_messages(
     )
     if conversation_id is not None:
         query = query.where(QAMessage.conversation_id == conversation_id)
-    return list(session.scalars(query))
+    return list(session.scalars(query.offset(offset).limit(limit)))
+
+
+def count_messages(
+    session: Session,
+    meeting_id: UUID,
+    conversation_id: UUID | None = None,
+) -> int:
+    query = (
+        select(func.count())
+        .select_from(QAMessage)
+        .where(QAMessage.meeting_id == meeting_id)
+    )
+    if conversation_id is not None:
+        query = query.where(QAMessage.conversation_id == conversation_id)
+    return session.scalar(query) or 0

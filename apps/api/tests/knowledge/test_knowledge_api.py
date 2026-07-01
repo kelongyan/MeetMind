@@ -3,16 +3,20 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_workspace_search_returns_cited_meeting_results() -> None:
+def test_workspace_search_returns_cited_meeting_results(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
     meeting_id, segment_id, _action_id = _create_workspace_meeting(
         client,
+        auth_headers,
         workspace_id="workspace-a",
         title="Launch review",
         transcript_text="Nina owns the launch checklist before Friday.",
     )
     _create_workspace_meeting(
         client,
+        auth_headers,
         workspace_id="workspace-b",
         title="Private review",
         transcript_text="Nina owns the private checklist.",
@@ -21,6 +25,7 @@ def test_workspace_search_returns_cited_meeting_results() -> None:
     response = client.get(
         "/api/knowledge/search",
         params={"workspace_id": "workspace-a", "query": "owns launch"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 200
@@ -33,10 +38,13 @@ def test_workspace_search_returns_cited_meeting_results() -> None:
     assert results[0]["snippet"] == "Nina owns the launch checklist before Friday."
 
 
-def test_decision_list_returns_historical_decisions_with_citations() -> None:
+def test_decision_list_returns_historical_decisions_with_citations(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
     meeting_id, segment_id, _action_id = _create_workspace_meeting(
         client,
+        auth_headers,
         workspace_id="workspace-a",
         title="Architecture review",
         transcript_text="We decided to keep Postgres for v0.1.",
@@ -49,6 +57,7 @@ def test_decision_list_returns_historical_decisions_with_citations() -> None:
             "body": "The team decided to keep Postgres for v0.1.",
             "status": "confirmed",
         },
+        headers=auth_headers,
     ).json()
     citation = client.post(
         f"/api/meetings/{meeting_id}/citations",
@@ -61,14 +70,17 @@ def test_decision_list_returns_historical_decisions_with_citations() -> None:
             "quote": "We decided to keep Postgres for v0.1.",
             "confidence": 0.93,
         },
+        headers=auth_headers,
     ).json()
 
     response = client.get(
-        "/api/knowledge/decisions", params={"workspace_id": "workspace-a"}
+        "/api/knowledge/decisions",
+        params={"workspace_id": "workspace-a"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 200
-    decisions = response.json()
+    decisions = response.json()["items"]
     assert len(decisions) == 1
     assert decisions[0]["id"] == decision["id"]
     assert decisions[0]["meeting_id"] == meeting_id
@@ -76,10 +88,13 @@ def test_decision_list_returns_historical_decisions_with_citations() -> None:
     assert decisions[0]["citations"][0]["id"] == citation["id"]
 
 
-def test_duplicate_action_candidates_are_reported_without_merging() -> None:
+def test_duplicate_action_candidates_are_reported_without_merging(
+    auth_headers: dict[str, str],
+) -> None:
     client = TestClient(app)
     _first_meeting_id, _first_segment_id, first_action_id = _create_workspace_meeting(
         client,
+        auth_headers,
         workspace_id="workspace-a",
         title="Planning one",
         transcript_text="Nina will prepare the launch checklist.",
@@ -87,6 +102,7 @@ def test_duplicate_action_candidates_are_reported_without_merging() -> None:
     _second_meeting_id, _second_segment_id, second_action_id = (
         _create_workspace_meeting(
             client,
+            auth_headers,
             workspace_id="workspace-a",
             title="Planning two",
             transcript_text="Nina should prepare launch checklist updates.",
@@ -96,10 +112,11 @@ def test_duplicate_action_candidates_are_reported_without_merging() -> None:
     response = client.get(
         "/api/knowledge/duplicate-actions",
         params={"workspace_id": "workspace-a"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 200
-    groups = response.json()
+    groups = response.json()["items"]
     assert len(groups) == 1
     assert {item["id"] for item in groups[0]["items"]} == {
         first_action_id,
@@ -109,11 +126,17 @@ def test_duplicate_action_candidates_are_reported_without_merging() -> None:
 
 
 def _create_workspace_meeting(
-    client: TestClient, *, workspace_id: str, title: str, transcript_text: str
+    client: TestClient,
+    auth_headers: dict[str, str],
+    *,
+    workspace_id: str,
+    title: str,
+    transcript_text: str,
 ) -> tuple[str, str, str]:
     meeting_id = client.post(
         "/api/meetings",
         json={"title": title, "language": "en", "workspace_id": workspace_id},
+        headers=auth_headers,
     ).json()["id"]
     segment = client.post(
         f"/api/meetings/{meeting_id}/transcript",
@@ -123,6 +146,7 @@ def _create_workspace_meeting(
             "text": transcript_text,
             "confidence": 0.95,
         },
+        headers=auth_headers,
     ).json()
     action = client.post(
         f"/api/meetings/{meeting_id}/action-items",
@@ -131,6 +155,7 @@ def _create_workspace_meeting(
             "owner_text": "Nina",
             "due_text": "Friday",
         },
+        headers=auth_headers,
     ).json()
     client.post(
         f"/api/meetings/{meeting_id}/citations",
@@ -143,5 +168,6 @@ def _create_workspace_meeting(
             "quote": transcript_text,
             "confidence": 0.9,
         },
+        headers=auth_headers,
     )
     return meeting_id, segment["id"], action["id"]

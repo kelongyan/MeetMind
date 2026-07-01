@@ -38,7 +38,7 @@ def test_create_and_list_transcript_segments_in_time_order() -> None:
 
     list_response = client.get(f"/api/meetings/{meeting_id}/transcript")
     assert list_response.status_code == 200
-    segments = list_response.json()
+    segments = list_response.json()["items"]
     assert [segment["text"] for segment in segments] == [
         "We start with the backend model.",
         "Then we review citations.",
@@ -124,7 +124,7 @@ def test_list_sections_builds_basic_transcript_navigation() -> None:
     response = client.get(f"/api/meetings/{meeting_id}/sections")
 
     assert response.status_code == 200
-    sections = response.json()
+    sections = response.json()["items"]
     assert len(sections) == 2
     assert sections[0]["title"] == "Topic 0 discussion details."
     assert sections[0]["start_ms"] == 0

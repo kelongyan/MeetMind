@@ -14,8 +14,6 @@ import { Check, Pencil, Play, X } from "lucide-react";
 import type { UpdateActionItemPayload } from "../../api";
 import { ReviewButton } from "../shared/review-button";
 
-const REVIEWER_USER_ID = "local-user";
-
 export function ActionReviewControls({
   disabled,
   item,
@@ -60,7 +58,6 @@ export function ActionReviewControls({
           onClick={() =>
             onUpdate(item.id, {
               status: "confirmed",
-              confirmed_by_user_id: REVIEWER_USER_ID,
             })
           }
           tone="success"

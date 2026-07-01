@@ -38,7 +38,5 @@ class AnswerSynthesizer(Protocol):
     provider_name: str
     model_name: str
 
-    def synthesize(
-        self, request: AnswerSynthesisRequest
-    ) -> AnswerSynthesisResponse:
+    def synthesize(self, request: AnswerSynthesisRequest) -> AnswerSynthesisResponse:
         """Create an answer from citable meeting evidence only."""

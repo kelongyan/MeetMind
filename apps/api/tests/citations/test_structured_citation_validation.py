@@ -37,7 +37,7 @@ def test_structuring_rejects_citation_time_range_outside_segment() -> None:
 
     assert extractor.calls == 2
     assert client.get(f"/api/jobs/{job_id}").json()["status"] == "failed"
-    assert client.get(f"/api/meetings/{meeting_id}/citations").json() == []
+    assert client.get(f"/api/meetings/{meeting_id}/citations").json()["items"] == []
 
 
 def _create_meeting(client: TestClient) -> tuple[str, str, UUID]:

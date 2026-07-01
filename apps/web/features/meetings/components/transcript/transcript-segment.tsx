@@ -3,6 +3,23 @@ import { formatTimestamp } from "../../view-model";
 import type { TranscriptSegment } from "../../types";
 import { segmentDomId } from "../shared/tone-utils";
 
+/**
+ * Resolve a human-readable label from the segment's voice identifier.
+ * Falls back to a generic label when no information is available.
+ */
+function resolveVoiceLabel(segment: TranscriptSegment): string {
+  if (segment.speaker_id) {
+    // ASR 提供者通常返回 "SPEAKER_00", "spk_1" 等格式。
+    // 统一转换为友好标签，如"发言人 1"。
+    const match = segment.speaker_id.match(/(\d+)/);
+    if (match) {
+      return `发言人 ${Number(match[1]) + 1}`;
+    }
+    return segment.speaker_id;
+  }
+  return "发言人";
+}
+
 export function TranscriptSegmentItem({
   segment,
   highlighted,
@@ -12,14 +29,18 @@ export function TranscriptSegmentItem({
   highlighted: boolean;
   pulsed: boolean;
 }) {
+  const voiceLabel = resolveVoiceLabel(segment);
+
   return (
     <article
       className={cn(
-        "grid grid-cols-[88px_minmax(0,1fr)] gap-4 rounded-md border border-transparent px-2 py-3 outline-none transition-[background-color,border-color,box-shadow] duration-200",
+        "grid grid-cols-[88px_minmax(0,1fr)] gap-4 rounded-md border border-transparent px-2 py-3 outline-none transition-[background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none",
         highlighted
           ? "border-evidence-border bg-evidence-soft"
           : "hover:border-border hover:bg-surface-subtle",
-        pulsed ? "ring-2 ring-evidence/25 shadow-[0_0_0_4px_rgba(8,145,178,0.10)]" : ""
+        pulsed
+          ? "ring-2 ring-evidence/25 shadow-[0_0_0_4px_rgba(8,145,178,0.10)]"
+          : "",
       )}
       data-evidence-active={highlighted ? "true" : "false"}
       data-evidence-pulse={pulsed ? "true" : "false"}
@@ -30,15 +51,18 @@ export function TranscriptSegmentItem({
         <time className="font-mono text-xs font-semibold text-evidence">
           {formatTimestamp(segment.start_ms)}
         </time>
-        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-text-muted">
-          发言人
+        <span
+          className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-text-muted"
+          title={segment.speaker_id ?? undefined}
+        >
+          {voiceLabel}
         </span>
       </div>
 
       <div
         className={cn(
           "min-w-0 border-l-2 pl-4",
-          highlighted ? "border-l-evidence" : "border-l-border"
+          highlighted ? "border-l-evidence" : "border-l-border",
         )}
       >
         {segment.confidence !== undefined &&
