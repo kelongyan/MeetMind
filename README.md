@@ -2,7 +2,7 @@
 
 # MeetMind
 
-可信会议智能工作台
+### 🧠 可信会议智能工作台
 
 把会议音频、视频、转写文本和人工记录整理成可验证、可检索、可追踪的团队知识资产。
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 项目简介
+## ✨ 项目简介
 
 MeetMind 面向会议后的真实协作场景。
 
@@ -25,9 +25,9 @@ MeetMind 面向会议后的真实协作场景。
 - 支持跨会议行动项追踪和知识搜索。
 - 提供 provider 状态、调用质量和成本估算的运维可见性。
 
-## 功能特性
+## 🚀 功能特性
 
-### 会议工作台
+### 🧭 会议工作台
 
 - 创建会议并上传音频、视频、转写文本或字幕文件。
 - 查看带时间戳的 transcript。
@@ -35,7 +35,7 @@ MeetMind 面向会议后的真实协作场景。
 - 查看处理任务状态并执行 retry。
 - 在质量校验通过后发布会议。
 
-### 洞察与行动项
+### 📝 洞察与行动项
 
 - 提取讨论点、决策、风险和开放问题。
 - 提取行动项，包括负责人文本、截止时间文本、状态和置信度。
@@ -43,7 +43,7 @@ MeetMind 面向会议后的真实协作场景。
 - 支持跨会议查看行动项，并按状态筛选。
 - 可从行动项跳回来源会议。
 
-### 引用与问答
+### 🔗 引用与问答
 
 - 为结构化结果和问答答案保存 citation。
 - 点击 citation 回到 transcript 对应片段。
@@ -51,21 +51,21 @@ MeetMind 面向会议后的真实协作场景。
 - 保存 Q&A 历史。
 - 证据不足时拒绝编造答案。
 
-### 知识库
+### 📚 知识库
 
 - 按 workspace 搜索 transcript、insight 和 action item。
 - 查看历史决策。
 - 提示可能重复的行动项。
 - 跨会议结果保留来源会议和上下文线索。
 
-### 运维视图
+### 📊 运维视图
 
 - 查看 ASR、LLM、Embedding、Q&A provider 配置状态。
 - 查看 provider 调用次数、失败次数、平均耗时和成本估算。
 - 预留任务同步 adapter 边界。
 - 不在界面展示 API key、token 或 webhook URL。
 
-## 产品原则
+## 🧩 产品原则
 
 | 原则 | 说明 |
 | --- | --- |
@@ -74,7 +74,7 @@ MeetMind 面向会议后的真实协作场景。
 | Evidence First | 决策、行动项和回答尽量带证据 |
 | Human-in-the-loop | AI 结果先审阅，再发布 |
 
-## 技术栈
+## 🛠️ 技术栈
 
 | 模块 | 技术 |
 | --- | --- |
@@ -87,7 +87,7 @@ MeetMind 面向会议后的真实协作场景。
 | 测试与质量 | pytest、ruff、Vitest、TypeScript、ESLint |
 | 包管理 | pnpm |
 
-## 仓库结构
+## 📁 仓库结构
 
 ```text
 MeetMind/
@@ -136,7 +136,7 @@ apps/web/features/meetings/
   components/transcript/         transcript 和章节导航
 ```
 
-## 环境要求
+## ⚙️ 环境要求
 
 - Windows PowerShell
 - Docker Desktop
@@ -144,7 +144,7 @@ apps/web/features/meetings/
 - Python 3.12+
 - 后端虚拟环境：`apps/api/.venv`
 
-## 配置
+## 🔐 配置
 
 复制环境变量示例：
 
@@ -180,7 +180,7 @@ TASK_SYNC_WEBHOOK_URL=
 
 默认情况下，ASR 和 LLM provider 关闭；本地 embedding 和 extractive Q&A 可用于开发验证。
 
-## 本地开发
+## 💻 本地开发
 
 安装依赖：
 
@@ -232,7 +232,7 @@ http://localhost:3927
 pnpm infra:down
 ```
 
-## 常用命令
+## ⌨️ 常用命令
 
 根目录：
 
@@ -264,7 +264,7 @@ pnpm --filter @meetmind/web typecheck
 pnpm --filter @meetmind/web build
 ```
 
-## 测试
+## ✅ 测试
 
 推荐验证流程：
 
@@ -286,7 +286,7 @@ Backend: 70 tests passing
 Frontend: 38 tests passing
 ```
 
-## 运维说明
+## 📈 运维说明
 
 - Provider telemetry 使用 `meetmind.provider` logger。
 - Telemetry 记录 provider、model、prompt version、latency、estimated units、cost estimate 和失败信息。
@@ -294,14 +294,14 @@ Frontend: 38 tests passing
 - 任务同步当前只暴露 adapter readiness，第三方系统深度集成默认未启用。
 - Docker Compose 数据默认保存在 `storage/docker` 下。
 
-## 安全说明
+## 🛡️ 安全说明
 
 - 不提交 `.env`、API key、凭证、私密录音、本地数据库或运行日志。
 - 运维界面不得展示原始 API key、token 或 webhook URL。
 - Provider telemetry 只记录元数据，不记录完整会议正文或敏感 prompt。
 - AI 输出应尽量绑定来源证据。
 
-## 当前状态
+## 📌 当前状态
 
 MeetMind 当前已经具备本地产品可用形态，覆盖会议处理、审阅、行动项追踪、知识搜索和运维可见性。
 
@@ -311,3 +311,4 @@ MeetMind 当前已经具备本地产品可用形态，覆盖会议处理、审�
 - 企业级权限、SSO、审计和多租户治理尚未完整实现。
 - Jira、Linear、飞书、Slack 等外部任务系统尚未深度接入。
 - 生产级部署加固仍属于后续工作。
+
